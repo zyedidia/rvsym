@@ -5,6 +5,14 @@ type Bits struct {
 	n   int
 }
 
+func RepeatBit(i uint32, b int, amt int) Bits {
+	bit := (i >> b) & 0x1
+	if bit == 1 {
+		return Bits{^uint32(0), amt}
+	}
+	return Bits{0, amt}
+}
+
 func GetBits(i uint32, top, bot int) Bits {
 	return Bits{i >> bot, top - bot + 1}
 }

@@ -2,25 +2,23 @@ package minisym
 
 import (
 	"fmt"
+	"io/ioutil"
 	"testing"
 )
 
-func TestAdd(t *testing.T) {
-	insns := []uint32{
-		0x00500293,
-		0x00128463,
-		0x00000463,
-		0x00528293,
-		0x00000063,
+func TestConcrete(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/riscvtest.o")
+	if err != nil {
+		t.Fatal(err)
+	}
+	code := LoadCode(data)
+
+	eng := NewEngine(code)
+
+	for i := 0; i < 100; i++ {
+		eng.Step()
 	}
 
-	e := NewEngine(insns)
-
-	for i := 0; i < 10; i++ {
-		e.Step()
-	}
-
-	fmt.Println(len(e.Machines))
-	fmt.Println(e.Machines[0].MustReg("x5"))
-	fmt.Println(e.Machines[1].MustReg("x5"))
+	fmt.Println(eng.machines[0].regs)
+	fmt.Println(eng.machines[0].mem)
 }
