@@ -11,8 +11,9 @@ type Machine struct {
 	pc    int
 	regs  []st.Int32
 	conds []z3.Bool
+	mem   map[uint32]st.Int32
 
-	mem map[uint32]st.Int32
+	done bool
 
 	ctx *z3.Context
 }
@@ -85,7 +86,15 @@ type Branch struct {
 	cond st.Bool
 }
 
-func (m *Machine) Exec(insn uint32) (Branch, bool) {
+func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, err error) {
+	switch insn {
+	case InsnNop:
+		return br, false, nil
+	case InsnEbreak:
+		m.done = true
+		return br, false, fmt.Errorf("ebreak reached")
+	}
+
 	op := GetBits(insn, 6, 0).Uint32()
 
 	switch op {
@@ -94,21 +103,21 @@ func (m *Machine) Exec(insn uint32) (Branch, bool) {
 	case OpIarith:
 		m.iarith(insn)
 	case OpBranch:
-		return m.branch(insn), true
+		return m.branch(insn), true, nil
 	case OpLui:
 		m.lui(insn)
 	case OpAuipc:
 		m.auipc(insn)
 	case OpJal:
-		return m.jal(insn), true
+		return m.jal(insn), true, nil
 	case OpJalr:
-		return m.jalr(insn), true
+		return m.jalr(insn), true, nil
 	case OpLoad:
 		m.load(insn)
 	case OpStore:
 		m.store(insn)
 	}
-	return Branch{}, false
+	return Branch{}, false, nil
 }
 
 func (m *Machine) concretize(val st.Int32) int32 {

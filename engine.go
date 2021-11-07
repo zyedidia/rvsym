@@ -23,11 +23,26 @@ func NewEngine(insns []uint32) *Engine {
 	}
 }
 
-func (e *Engine) Step() {
+type Panic struct {
+	Pc       int
+	Universe int
+}
+
+func (e *Engine) Step() []Panic {
+	var panics []Panic
+
 	nmach := len(e.machines)
 	for i := 0; i < nmach; i++ {
 		m := e.machines[i]
-		br, ok := m.Exec(e.insns[m.pc/4])
+
+		if m.done {
+			continue
+		}
+
+		br, ok, err := m.Exec(e.insns[m.pc/4])
+		if err != nil {
+			panics = append(panics, Panic{Pc: m.pc, Universe: i})
+		}
 		if ok && br.cond.IsConcrete() {
 			if br.cond.C {
 				m.pc = br.pc
@@ -46,6 +61,7 @@ func (e *Engine) Step() {
 			m.pc += 4
 		}
 	}
+	return panics
 }
 
 func (e *Engine) Context() *z3.Context {

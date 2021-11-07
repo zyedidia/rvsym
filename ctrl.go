@@ -17,6 +17,12 @@ const (
 )
 
 const (
+	InsnEcall  = 0x00000073
+	InsnEbreak = 0x00100073
+	InsnNop    = 0x00000013
+)
+
+const (
 	AluAdd  = 0b000
 	AluShl  = 0b001
 	AluSlt  = 0b010
