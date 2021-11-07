@@ -1,0 +1,31 @@
+package minisym
+
+const (
+	OpRarith = 0b0110011
+	OpIarith = 0b0010011
+	OpBranch = 0b1100011
+	OpLui    = 0b0110111
+	OpAuipc  = 0b0010111
+	OpJal    = 0b1101111
+	OpJalr   = 0b1100111
+	OpLoad   = 0b0000011
+	OpStore  = 0b0100011
+	OpFence  = 0b0001111
+	OpSys    = 0b1110011
+)
+
+const (
+	NextPCZ = iota
+	NextPCNZ
+)
+
+const (
+	AluAdd  = 0b000
+	AluShl  = 0b001
+	AluSlt  = 0b010
+	AluSltu = 0b011
+	AluXor  = 0b100
+	AluShr  = 0b101
+	AluOr   = 0b110
+	AluAnd  = 0b111
+)

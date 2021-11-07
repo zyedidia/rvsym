@@ -1,1 +1,1 @@
-slti x1, x2, 5
+add x1, x1, x1

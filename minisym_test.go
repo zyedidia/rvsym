@@ -7,19 +7,20 @@ import (
 
 func TestAdd(t *testing.T) {
 	insns := []uint32{
-		0x00512093,
+		0x00500293,
+		0x00128463,
+		0x00000463,
+		0x00528293,
+		0x00000063,
 	}
 
-	m := NewMachine()
+	e := NewEngine(insns)
 
-	for _, i := range insns {
-		m.Exec(i)
+	for i := 0; i < 10; i++ {
+		e.Step()
 	}
 
-	fmt.Println(m.MustReg("x1"))
-
-	regs := m.Assignment()
-	for i, r := range regs {
-		fmt.Printf("%d: %d\n", i, r)
-	}
+	fmt.Println(len(e.Machines))
+	fmt.Println(e.Machines[0].MustReg("x5"))
+	fmt.Println(e.Machines[1].MustReg("x5"))
 }
