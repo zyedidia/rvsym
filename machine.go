@@ -64,6 +64,22 @@ func (m *Machine) WriteReg(reg uint32, val st.Int32) {
 	m.regs[reg] = val
 }
 
+func (m *Machine) MustSolver() *z3.Solver {
+	s := z3.NewSolver(m.ctx)
+	for _, c := range m.conds {
+		s.Assert(c)
+	}
+	sat, err := s.Check()
+	if err != nil {
+		panic(err)
+	}
+	if !sat {
+		panic(fmt.Sprintf("could not generate solver: unsatisfiable formula"))
+	}
+
+	return s
+}
+
 type Branch struct {
 	pc   int
 	cond st.Bool
@@ -93,6 +109,19 @@ func (m *Machine) Exec(insn uint32) (Branch, bool) {
 		m.store(insn)
 	}
 	return Branch{}, false
+}
+
+func (m *Machine) concretize(val st.Int32) int32 {
+	if val.IsConcrete() {
+		return val.C
+	}
+
+	s := m.MustSolver()
+	model := s.Model()
+
+	concrete := val.Eval(model)
+	m.AddCond(val.Eq(st.Int32{C: concrete}).S)
+	return concrete
 }
 
 func extractRegs(insn uint32) (rd, rs1, rs2 uint32) {
@@ -172,8 +201,7 @@ func (m *Machine) jalr(insn uint32) Branch {
 	pc := m.regs[rs1].Add(st.Int32{C: int32(imm)})
 
 	if !pc.IsConcrete() {
-		// TODO: concretize
-		panic("jalr target is symbolic")
+		pc = st.Int32{C: m.concretize(pc)}
 	}
 	m.WriteReg(rd, st.Int32{C: int32(m.pc + 4)})
 
@@ -209,8 +237,7 @@ func (m *Machine) load(insn uint32) {
 
 	rsval := m.regs[rs1]
 	if !rsval.IsConcrete() {
-		// TODO: concretize
-		panic("load address is symbolic")
+		rsval = st.Int32{C: m.concretize(rsval)}
 	}
 
 	addr := uint32(rsval.C) + imm
@@ -233,8 +260,7 @@ func (m *Machine) store(insn uint32) {
 
 	rsval := m.regs[rs1]
 	if !rsval.IsConcrete() {
-		// TODO: concretize
-		panic("store address is symbolic")
+		rsval = st.Int32{C: m.concretize(rsval)}
 	}
 
 	addr := uint32(rsval.C) + imm

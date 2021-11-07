@@ -73,26 +73,15 @@ func (r RegMap) String() string {
 	return buf.String()
 }
 
-func (e *Engine) UniverseInput(n int) (RegMap, error) {
+func (e *Engine) UniverseInput(n int) RegMap {
 	m := e.machines[n]
 
-	s := z3.NewSolver(e.ctx)
-	for _, c := range m.conds {
-		s.Assert(c)
-	}
-	sat, err := s.Check()
-	if err != nil {
-		return nil, err
-	}
-	if !sat {
-		return nil, fmt.Errorf("problem is unsatisfiable")
-	}
-
+	s := m.MustSolver()
 	model := s.Model()
 
 	regmap := make([]int32, 32)
 	for i := range m.regs {
 		regmap[i] = m.regs[i].Eval(model)
 	}
-	return regmap, nil
+	return regmap
 }
