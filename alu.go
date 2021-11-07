@@ -1,4 +1,4 @@
-package minisym
+package rvsym
 
 import "github.com/zyedidia/go-z3/st"
 

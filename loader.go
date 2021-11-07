@@ -1,4 +1,4 @@
-package minisym
+package rvsym
 
 import (
 	"bytes"

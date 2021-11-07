@@ -1,4 +1,4 @@
-package minisym
+package rvsym
 
 type Bits struct {
 	val uint32

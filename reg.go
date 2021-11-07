@@ -1,4 +1,4 @@
-package minisym
+package rvsym
 
 var RegNums = map[string]int{
 	"x0":  0,
