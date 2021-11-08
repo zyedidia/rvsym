@@ -7,7 +7,7 @@ import (
 )
 
 func TestConcrete(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/riscvtest.bin")
+	data, err := ioutil.ReadFile("testdata/symex.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,6 +24,7 @@ func TestConcrete(t *testing.T) {
 
 	for _, p := range panics {
 		fmt.Printf("Universe %d panicked at 0x%x\n", p.Universe, p.Pc)
+		fmt.Println(eng.UniverseInput(p.Universe))
 	}
 
 	fmt.Println(eng.machines[0].regs)

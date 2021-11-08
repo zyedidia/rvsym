@@ -42,3 +42,23 @@ const (
 	ImmJ
 	ImmU
 )
+
+const (
+	SysSymbolicRegs = iota
+	SysFail
+	SysSymbolicReg
+	SysExit
+	SysQuietExit
+	SysSetup
+	SysChoose
+	SysMarkNBytes
+)
+
+type ExitStatus byte
+
+const (
+	ExitNormal = iota
+	ExitQuiet
+	ExitFail
+	ExitNone // not an exit
+)

@@ -39,8 +39,8 @@ func (e *Engine) Step() []Panic {
 			continue
 		}
 
-		br, ok, err := m.Exec(e.insns[m.pc/4])
-		if err != nil {
+		br, ok, exit := m.Exec(e.insns[m.pc/4])
+		if exit == ExitFail {
 			panics = append(panics, Panic{Pc: m.pc, Universe: i})
 		}
 		if ok && br.cond.IsConcrete() {
@@ -72,7 +72,7 @@ func (e *Engine) NumUniverses() int {
 	return len(e.machines)
 }
 
-type RegMap []int32
+type RegMap map[int]int32
 
 func (r RegMap) WithName(name string) int32 {
 	if reg, ok := RegNums[name]; ok {
@@ -95,8 +95,11 @@ func (e *Engine) UniverseInput(n int) RegMap {
 	s := m.MustSolver()
 	model := s.Model()
 
-	regmap := make([]int32, 32)
+	regmap := make(map[int]int32)
 	for i := range m.regs {
+		if m.regs[i].IsConcrete() {
+			continue
+		}
 		regmap[i] = m.regs[i].Eval(model)
 	}
 	return regmap

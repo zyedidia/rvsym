@@ -86,13 +86,21 @@ type Branch struct {
 	cond st.Bool
 }
 
-func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, err error) {
+func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, ex ExitStatus) {
 	switch insn {
 	case InsnNop:
-		return br, false, nil
-	case InsnEbreak:
-		m.done = true
-		return br, false, fmt.Errorf("ebreak reached")
+		return br, false, ExitNone
+	case InsnEcall:
+		sysnum := m.regs[10] // a0
+		if !sysnum.IsConcrete() {
+			// TODO: cleanup
+			panic("system call number is symbolic")
+		}
+		ex := m.symsys(insn, int(sysnum.C))
+		if ex != ExitNone {
+			m.done = true
+		}
+		return br, false, ex
 	}
 
 	op := GetBits(insn, 6, 0).Uint32()
@@ -103,21 +111,46 @@ func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, err error) {
 	case OpIarith:
 		m.iarith(insn)
 	case OpBranch:
-		return m.branch(insn), true, nil
+		return m.branch(insn), true, ExitNone
 	case OpLui:
 		m.lui(insn)
 	case OpAuipc:
 		m.auipc(insn)
 	case OpJal:
-		return m.jal(insn), true, nil
+		return m.jal(insn), true, ExitNone
 	case OpJalr:
-		return m.jalr(insn), true, nil
+		return m.jalr(insn), true, ExitNone
 	case OpLoad:
 		m.load(insn)
 	case OpStore:
 		m.store(insn)
 	}
-	return Branch{}, false, nil
+	return Branch{}, false, ExitNone
+}
+
+func (m *Machine) symsys(insn uint32, sysnum int) ExitStatus {
+	switch sysnum {
+	case SysSymbolicRegs:
+		for i := range m.regs[1:] {
+			m.regs[i+1] = st.AnyInt32(m.ctx, fmt.Sprintf("x%d", i+1))
+		}
+	case SysSymbolicReg:
+		sysarg := m.regs[11] // a1
+		if !sysarg.IsConcrete() {
+			panic("required syscall argument is symbolic")
+		}
+		m.regs[sysarg.C] = st.AnyInt32(m.ctx, fmt.Sprintf("x%d", sysarg.C))
+	case SysFail:
+		return ExitFail
+	case SysExit:
+		return ExitNormal
+	case SysQuietExit:
+		return ExitQuiet
+	case SysSetup:
+	case SysChoose:
+	case SysMarkNBytes:
+	}
+	return ExitNone
 }
 
 func (m *Machine) concretize(val st.Int32) int32 {
