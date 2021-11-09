@@ -15,8 +15,5 @@ int main() {
 
     rvsym_mark_bytes(&a, sizeof(a));
 
-    int ret = get_sign(a);
-
-    rvsym_exit();
-    return ret;
+    return get_sign(a);
 }
