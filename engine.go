@@ -119,7 +119,7 @@ func (e *Engine) UniverseInput(n int) TestCase {
 	for addr, val := range m.mem {
 		if !val.IsConcrete() {
 			testcase = append(testcase, TestVal{
-				Name:  fmt.Sprintf("0x%x", addr),
+				Name:  fmt.Sprintf("0x%x", addr*4),
 				Value: val.Eval(model),
 			})
 		}

@@ -177,6 +177,8 @@ func (m *Machine) symsys(insn uint32, sysnum int) ExitStatus {
 			panic("mark size is symbolic")
 		}
 
+		fmt.Printf("INFO: marking %d bytes at 0x%x\n", nbytes.C, ptr.C)
+
 		for i := int32(0); i < nbytes.C/4; i++ {
 			idx := i * 4
 			m.mem.Write32(uint32(ptr.C+idx), st.AnyInt32(m.ctx, fmt.Sprintf("0x%x[%d]", ptr, idx)))
