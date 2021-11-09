@@ -20,7 +20,7 @@ LDFLAGS=-T memmap.ld -melf32lriscv -nostdlib
 all: $(PROGS)
 
 %.o: %.s
-	cpp $(INC) $< $($@) | $(AS) $(ASFLAGS) -c -o $@
+	cpp $(INC) $< $@ | $(AS) $(ASFLAGS) -c -o $@
 
 %.elf: %.o
 	$(LD) $(LDFLAGS) $< -o $@
