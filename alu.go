@@ -1,6 +1,8 @@
 package rvsym
 
-import "github.com/zyedidia/go-z3/st"
+import (
+	"github.com/zyedidia/go-z3/st"
+)
 
 func alu(a, b st.Int32, op uint32, sub, arishift bool) st.Int32 {
 	switch op {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/zyedidia/go-z3/st"
 	"github.com/zyedidia/go-z3/z3"
 )
 
@@ -16,32 +17,41 @@ type Engine struct {
 
 func NewEngine(insns []uint32) *Engine {
 	ctx := z3.NewContext(nil)
+	mem := make(Memory)
+
+	for i, ins := range insns {
+		mem.Write32(uint32(i*4), st.Int32{C: int32(ins)})
+	}
+
 	return &Engine{
 		insns:    insns,
 		ctx:      ctx,
-		machines: []*Machine{NewMachine(ctx, 0)},
+		machines: []*Machine{NewMachine(ctx, 0, mem)},
 	}
 }
 
-type Panic struct {
-	Pc       int
+type Exit struct {
+	Pc       int32
 	Universe int
+	Status   ExitStatus
 }
 
-func (e *Engine) Step() []Panic {
-	var panics []Panic
+func (e *Engine) Step() ([]Exit, bool) {
+	var exits []Exit
 
 	nmach := len(e.machines)
+	done := 0
 	for i := 0; i < nmach; i++ {
 		m := e.machines[i]
 
 		if m.done {
+			done++
 			continue
 		}
 
 		br, ok, exit := m.Exec(e.insns[m.pc/4])
-		if exit == ExitFail {
-			panics = append(panics, Panic{Pc: m.pc, Universe: i})
+		if exit != ExitNone {
+			exits = append(exits, Exit{Pc: m.pc, Universe: i, Status: exit})
 		}
 		if ok && br.cond.IsConcrete() {
 			if br.cond.C {
@@ -61,7 +71,7 @@ func (e *Engine) Step() []Panic {
 			m.pc += 4
 		}
 	}
-	return panics
+	return exits, done == len(e.machines)
 }
 
 func (e *Engine) Context() *z3.Context {
@@ -72,35 +82,45 @@ func (e *Engine) NumUniverses() int {
 	return len(e.machines)
 }
 
-type RegMap map[int]int32
-
-func (r RegMap) WithName(name string) int32 {
-	if reg, ok := RegNums[name]; ok {
-		return r[reg]
-	}
-	panic(fmt.Sprintf("invalid register name %s", name))
+type TestVal struct {
+	Name  string
+	Value int32
 }
 
-func (r RegMap) String() string {
+type TestCase []TestVal
+
+func (t TestCase) String() string {
 	buf := &bytes.Buffer{}
-	for i, reg := range r {
-		buf.WriteString(fmt.Sprintf("x%d: %d\n", i, reg))
+	for _, val := range t {
+		buf.WriteString(fmt.Sprintf("%s -> %d\n", val.Name, val.Value))
 	}
 	return buf.String()
 }
 
-func (e *Engine) UniverseInput(n int) RegMap {
+func (e *Engine) UniverseInput(n int) TestCase {
 	m := e.machines[n]
 
 	s := m.MustSolver()
 	model := s.Model()
 
-	regmap := make(map[int]int32)
+	testcase := make(TestCase, 0)
 	for i := range m.regs {
-		if m.regs[i].IsConcrete() {
-			continue
+		if !m.regs[i].IsConcrete() {
+			testcase = append(testcase, TestVal{
+				Name:  fmt.Sprintf("x%d", i),
+				Value: m.regs[i].Eval(model),
+			})
 		}
-		regmap[i] = m.regs[i].Eval(model)
 	}
-	return regmap
+
+	for addr, val := range m.mem {
+		if !val.IsConcrete() {
+			testcase = append(testcase, TestVal{
+				Name:  fmt.Sprintf("0x%x", addr),
+				Value: val.Eval(model),
+			})
+		}
+	}
+
+	return testcase
 }

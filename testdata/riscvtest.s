@@ -1,3 +1,4 @@
+_start:
 main: addi x2, x0, 5
 addi x3, x0, 12
 addi x7, x3, -9

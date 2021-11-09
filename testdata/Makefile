@@ -1,5 +1,7 @@
-SRCS=$(wildcard *.s)
-PROGS=$(SRCS:.s=.bin)
+ASM=$(wildcard *.s)
+C=$(wildcard *.c)
+COBJ=$(C:.c=.o)
+PROGS=$(ASM:.s=.bin) $(C:.c=.bin)
 
 PREFIX ?= riscv32-unknown-elf-
 ifeq (, $(shell which riscv32-unknown-elf-gcc))
@@ -11,6 +13,8 @@ AS=$(PREFIX)as
 LD=$(PREFIX)ld
 OBJCOPY=$(PREFIX)objcopy
 OBJDUMP=$(PREFIX)objdump
+
+startobj = lib/start.o
 
 INC=-I../include
 CFLAGS=$(INC) -Os -Wall -Werror -nostdlib -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=gnu99
@@ -25,8 +29,8 @@ all: $(PROGS)
 %.o: %.s
 	cpp $(INC) $< | $(AS) $(ASFLAGS) -c -o $@
 
-%.elf: %.o
-	$(LD) $(LDFLAGS) $< -o $@
+%.elf: %.o $(startobj)
+	$(LD) $(LDFLAGS) $(if $(filter $<,$(COBJ)), $(startobj)) $< -o $@
 
 %.bin: %.elf
 	$(OBJCOPY) $< -O binary $@

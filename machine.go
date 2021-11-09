@@ -8,7 +8,7 @@ import (
 )
 
 type Machine struct {
-	pc    int
+	pc    int32
 	regs  []st.Int32
 	conds []z3.Bool
 	mem   Memory
@@ -18,7 +18,7 @@ type Machine struct {
 	ctx *z3.Context
 }
 
-func NewMachine(ctx *z3.Context, pc int) *Machine {
+func NewMachine(ctx *z3.Context, pc int32, mem Memory) *Machine {
 	regs := make([]st.Int32, 32)
 	for i := range regs {
 		regs[i] = st.Int32{C: 0}
@@ -28,7 +28,7 @@ func NewMachine(ctx *z3.Context, pc int) *Machine {
 		pc:    pc,
 		regs:  regs,
 		conds: make([]z3.Bool, 0),
-		mem:   make(Memory),
+		mem:   mem,
 		ctx:   ctx,
 	}
 }
@@ -82,7 +82,7 @@ func (m *Machine) MustSolver() *z3.Solver {
 }
 
 type Branch struct {
-	pc   int
+	pc   int32
 	cond st.Bool
 }
 
@@ -137,7 +137,7 @@ func (m *Machine) symsys(insn uint32, sysnum int) ExitStatus {
 	case SysSymbolicReg:
 		sysarg := m.regs[11] // a1
 		if !sysarg.IsConcrete() {
-			panic("required syscall argument is symbolic")
+			panic("required symcall argument is symbolic")
 		}
 		m.regs[sysarg.C] = st.AnyInt32(m.ctx, fmt.Sprintf("x%d", sysarg.C))
 	case SysFail:
@@ -146,9 +146,26 @@ func (m *Machine) symsys(insn uint32, sysnum int) ExitStatus {
 		return ExitNormal
 	case SysQuietExit:
 		return ExitQuiet
-	case SysSetup:
-	case SysChoose:
 	case SysMarkNBytes:
+		ptr := m.regs[11]    // a1
+		nbytes := m.regs[12] // a2
+
+		if !ptr.IsConcrete() {
+			panic("mark address is symbolic")
+		}
+		if !nbytes.IsConcrete() {
+			panic("mark size is symbolic")
+		}
+
+		for i := int32(0); i < nbytes.C/4; i++ {
+			idx := i * 4
+			m.mem.Write32(uint32(ptr.C+idx), st.AnyInt32(m.ctx, fmt.Sprintf("0x%x[%d]", ptr, idx)))
+		}
+		left := nbytes.C % 4
+		for i := int32(0); i < left; i++ {
+			idx := nbytes.C/4 + i
+			m.mem.Write8(uint32(ptr.C+idx), st.AnyInt32(m.ctx, fmt.Sprintf("0x%x[%d]", ptr, idx)))
+		}
 	}
 	return ExitNone
 }
@@ -218,7 +235,7 @@ func (m *Machine) branch(insn uint32) Branch {
 	}
 
 	return Branch{
-		pc:   m.pc + int(imm),
+		pc:   m.pc + int32(imm),
 		cond: cond,
 	}
 }
@@ -227,7 +244,7 @@ func (m *Machine) jal(insn uint32) Branch {
 	rd, _, _ := extractRegs(insn)
 	imm := extractImm(insn, ImmJ)
 
-	pc := m.pc + int(imm)
+	pc := m.pc + int32(imm)
 	m.WriteReg(rd, st.Int32{C: int32(m.pc + 4)})
 
 	return Branch{
@@ -248,7 +265,7 @@ func (m *Machine) jalr(insn uint32) Branch {
 	m.WriteReg(rd, st.Int32{C: int32(m.pc + 4)})
 
 	return Branch{
-		pc:   int(pc.C),
+		pc:   int32(pc.C),
 		cond: st.Bool{C: true},
 	}
 }
@@ -264,7 +281,7 @@ func (m *Machine) auipc(insn uint32) {
 	rd, _, _ := extractRegs(insn)
 	imm := extractImm(insn, ImmU)
 
-	m.WriteReg(rd, st.Int32{C: int32(m.pc + int(imm))})
+	m.WriteReg(rd, st.Int32{C: m.pc + int32(imm)})
 }
 
 func (m *Machine) load(insn uint32) {

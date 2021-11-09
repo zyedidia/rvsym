@@ -49,8 +49,6 @@ const (
 	SysSymbolicReg
 	SysExit
 	SysQuietExit
-	SysSetup
-	SysChoose
 	SysMarkNBytes
 )
 

@@ -7,24 +7,31 @@ import (
 )
 
 func TestConcrete(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/riscvtest.bin")
+	data, err := ioutil.ReadFile("testdata/test.bin")
 	if err != nil {
 		t.Fatal(err)
 	}
 	code := LoadCode(data)
 	eng := NewEngine(code)
 
-	var panics []Panic
+	var exits []Exit
 	for i := 0; i < 100; i++ {
-		stpa := eng.Step()
+		stpa, _ := eng.Step()
 		if len(stpa) > 0 {
-			panics = append(panics, stpa...)
+			exits = append(exits, stpa...)
 		}
 	}
 
-	for _, p := range panics {
-		fmt.Printf("Universe %d panicked at 0x%x\n", p.Universe, p.Pc)
-		fmt.Println(eng.UniverseInput(p.Universe))
+	for _, e := range exits {
+		if e.Status == ExitFail {
+			fmt.Printf("--- Universe %d FAILED ---\n", e.Universe)
+		} else {
+			fmt.Println("---")
+		}
+		fmt.Printf("Universe %d exited at 0x%x\n", e.Universe, e.Pc)
+		fmt.Println("Test case:")
+		fmt.Print(eng.UniverseInput(e.Universe))
+		fmt.Println("---")
 	}
 
 	fmt.Println(eng.machines[0].regs)
