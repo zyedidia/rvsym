@@ -6,12 +6,12 @@
 
 static inline void symcall_0(int symno) {
     register uintptr_t a0 asm("a0") = symno;
-    asm volatile("ecall" : "+r"(a0) :);
+    asm volatile("ecall" : "+r"(a0) : : "memory");
 }
 static inline void symcall_1(int symno, uintptr_t arg0) {
     register uintptr_t a0 asm("a0") = symno;
     register uintptr_t a1 asm("a1") = arg0;
-    asm volatile("ecall" : "+r"(a0), "+r"(a1) :);
+    asm volatile("ecall" : "+r"(a0), "+r"(a1) : : "memory");
 }
 static inline void symcall_2(int symno, uintptr_t arg0, uintptr_t arg1) {
     register uintptr_t a0 asm("a0") = symno;

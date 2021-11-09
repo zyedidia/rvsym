@@ -58,6 +58,8 @@ const (
 	ExitNormal = iota
 	ExitQuiet
 	ExitFail
+	ExitUnsure
+	ExitConcretize
 	ExitNone // not an exit
 )
 

@@ -100,7 +100,10 @@ func (t TestCase) String() string {
 func (e *Engine) UniverseInput(n int) TestCase {
 	m := e.machines[n]
 
-	s := m.MustSolver()
+	s, err := m.Solver()
+	if err != nil {
+		return nil
+	}
 	model := s.Model()
 
 	testcase := make(TestCase, 0)

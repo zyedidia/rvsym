@@ -1,6 +1,7 @@
 package rvsym
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/zyedidia/go-z3/st"
@@ -15,7 +16,8 @@ type Machine struct {
 
 	done bool
 
-	ctx *z3.Context
+	ctx    *z3.Context
+	solver *z3.Solver
 }
 
 func NewMachine(ctx *z3.Context, pc int32, mem Memory) *Machine {
@@ -65,20 +67,26 @@ func (m *Machine) WriteReg(reg uint32, val st.Int32) {
 	m.regs[reg] = val
 }
 
-func (m *Machine) MustSolver() *z3.Solver {
+var ErrUnsat = errors.New("unsatisfiable formula")
+
+func (m *Machine) Solver() (*z3.Solver, error) {
+	if m.solver != nil {
+		return m.solver, nil
+	}
+
 	s := z3.NewSolver(m.ctx)
 	for _, c := range m.conds {
 		s.Assert(c)
 	}
 	sat, err := s.Check()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	if !sat {
-		panic(fmt.Sprintf("could not generate solver: unsatisfiable formula"))
+		return nil, ErrUnsat
 	}
 
-	return s
+	return s, nil
 }
 
 type Branch struct {
@@ -98,7 +106,7 @@ func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, ex ExitStatus) {
 		}
 		ex := m.symsys(insn, int(sysnum.C))
 		if ex != ExitNone {
-			m.done = true
+			ex = m.Exit(ex)
 		}
 		return br, false, ex
 	}
@@ -126,6 +134,18 @@ func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, ex ExitStatus) {
 		m.store(insn)
 	}
 	return Branch{}, false, ExitNone
+}
+
+func (m *Machine) Exit(ex ExitStatus) ExitStatus {
+	m.done = true
+	s, err := m.Solver()
+	m.solver = s
+	if err == ErrUnsat {
+		return ExitQuiet
+	} else if err != nil {
+		return ExitUnsure
+	}
+	return ex
 }
 
 func (m *Machine) symsys(insn uint32, sysnum int) ExitStatus {
@@ -175,7 +195,10 @@ func (m *Machine) concretize(val st.Int32) int32 {
 		return val.C
 	}
 
-	s := m.MustSolver()
+	s, err := m.Solver()
+	if err != nil {
+		m.Exit(ExitConcretize)
+	}
 	model := s.Model()
 
 	concrete := val.Eval(model)

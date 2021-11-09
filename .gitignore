@@ -1,3 +1,5 @@
 *.o
 *.list
 *.bin
+rvsym
+!/cmd/rvsym
