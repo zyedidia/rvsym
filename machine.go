@@ -11,7 +11,7 @@ type Machine struct {
 	pc    int
 	regs  []st.Int32
 	conds []z3.Bool
-	mem   map[uint32]st.Int32
+	mem   Memory
 
 	done bool
 
@@ -28,7 +28,7 @@ func NewMachine(ctx *z3.Context, pc int) *Machine {
 		pc:    pc,
 		regs:  regs,
 		conds: make([]z3.Bool, 0),
-		mem:   make(map[uint32]st.Int32),
+		mem:   make(Memory),
 		ctx:   ctx,
 	}
 }
@@ -272,22 +272,29 @@ func (m *Machine) load(insn uint32) {
 	imm := extractImm(insn, ImmI)
 	funct3 := GetBits(insn, 14, 12).Uint32()
 
-	if funct3 != 0b010 {
-		// TODO: lb/lh/lbu/lhu
-		panic("unsupported: only lw is implemented")
-	}
-
 	rsval := m.regs[rs1]
 	if !rsval.IsConcrete() {
 		rsval = st.Int32{C: m.concretize(rsval)}
 	}
-
 	addr := uint32(rsval.C) + imm
-	if v, ok := m.mem[addr/4]; ok {
-		m.WriteReg(rd, v)
-	} else {
-		panic(fmt.Sprintf("invalid memory access at 0x%x", addr))
+
+	var rdval st.Int32
+	switch funct3 {
+	case ExtByte:
+		rdval = m.mem.Read8(addr)
+	case ExtHalf:
+		rdval = m.mem.Read16(addr)
+	case ExtWord:
+		rdval = m.mem.Read32(addr)
+	case ExtByteU:
+		rdval = m.mem.Read8u(addr)
+	case ExtHalfU:
+		rdval = m.mem.Read16u(addr)
+	default:
+		panic("invalid load instruction")
 	}
+
+	m.WriteReg(rd, rdval)
 }
 
 func (m *Machine) store(insn uint32) {
@@ -295,16 +302,23 @@ func (m *Machine) store(insn uint32) {
 	imm := extractImm(insn, ImmS)
 	funct3 := GetBits(insn, 14, 12).Uint32()
 
-	if funct3 != 0b010 {
-		// TODO: sb/sh
-		panic("unsupported: only sw is implemented")
-	}
-
 	rsval := m.regs[rs1]
 	if !rsval.IsConcrete() {
 		rsval = st.Int32{C: m.concretize(rsval)}
 	}
 
 	addr := uint32(rsval.C) + imm
-	m.mem[addr/4] = m.regs[rs2]
+
+	stval := m.regs[rs2]
+
+	switch funct3 {
+	case ExtByte:
+		m.mem.Write8(addr, stval)
+	case ExtHalf:
+		m.mem.Write16(addr, stval)
+	case ExtWord:
+		m.mem.Write32(addr, stval)
+	default:
+		panic("invalid store instruction")
+	}
 }

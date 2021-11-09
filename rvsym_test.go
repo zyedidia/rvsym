@@ -7,7 +7,7 @@ import (
 )
 
 func TestConcrete(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/symex.bin")
+	data, err := ioutil.ReadFile("testdata/riscvtest.bin")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -62,3 +62,11 @@ const (
 	ExitFail
 	ExitNone // not an exit
 )
+
+const (
+	ExtByte  = 0b000
+	ExtHalf  = 0b001
+	ExtWord  = 0b010
+	ExtByteU = 0b100
+	ExtHalfU = 0b101
+)
