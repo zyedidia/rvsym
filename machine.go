@@ -105,9 +105,7 @@ func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, ex ExitStatus) {
 			panic("system call number is symbolic")
 		}
 		ex := m.symsys(insn, int(sysnum.C))
-		if ex != ExitNone {
-			ex = m.Exit(ex)
-		}
+		ex = m.Exit(ex)
 		return br, false, ex
 	}
 
@@ -129,7 +127,9 @@ func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, ex ExitStatus) {
 	case OpJalr:
 		return m.jalr(insn), true, ExitNone
 	case OpLoad:
-		m.load(insn)
+		ex := m.load(insn)
+		ex = m.Exit(ex)
+		return Branch{}, false, ex
 	case OpStore:
 		m.store(insn)
 	}
@@ -137,6 +137,9 @@ func (m *Machine) Exec(insn uint32) (br Branch, hasbr bool, ex ExitStatus) {
 }
 
 func (m *Machine) Exit(ex ExitStatus) ExitStatus {
+	if ex == ExitNone {
+		return ex
+	}
 	m.done = true
 	s, err := m.Solver()
 	m.solver = s
@@ -311,7 +314,7 @@ func (m *Machine) auipc(insn uint32) {
 	m.WriteReg(rd, st.Int32{C: m.pc + int32(imm)})
 }
 
-func (m *Machine) load(insn uint32) {
+func (m *Machine) load(insn uint32) ExitStatus {
 	rd, rs1, _ := extractRegs(insn)
 	imm := extractImm(insn, ImmI)
 	funct3 := GetBits(insn, 14, 12).Uint32()
@@ -323,22 +326,30 @@ func (m *Machine) load(insn uint32) {
 	addr := uint32(rsval.C) + imm
 
 	var rdval st.Int32
+	var valid bool
 	switch funct3 {
 	case ExtByte:
-		rdval = m.mem.Read8(addr)
+		rdval, valid = m.mem.Read8(addr)
 	case ExtHalf:
-		rdval = m.mem.Read16(addr)
+		rdval, valid = m.mem.Read16(addr)
 	case ExtWord:
-		rdval = m.mem.Read32(addr)
+		rdval, valid = m.mem.Read32(addr)
 	case ExtByteU:
-		rdval = m.mem.Read8u(addr)
+		rdval, valid = m.mem.Read8u(addr)
 	case ExtHalfU:
-		rdval = m.mem.Read16u(addr)
+		rdval, valid = m.mem.Read16u(addr)
 	default:
 		panic("invalid load instruction")
 	}
 
+	if !valid {
+		fmt.Printf("ERROR: invalid memory access at 0x%x\n", addr)
+		return ExitFail
+	}
+
 	m.WriteReg(rd, rdval)
+
+	return ExitNone
 }
 
 func (m *Machine) store(insn uint32) {

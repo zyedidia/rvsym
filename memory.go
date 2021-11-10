@@ -1,8 +1,6 @@
 package rvsym
 
 import (
-	"fmt"
-
 	"github.com/zyedidia/go-z3/st"
 )
 
@@ -28,41 +26,39 @@ func (m Memory) Write8(addr uint32, val st.Int32) {
 	m[addr>>2] = m[addr>>2].And(wrmask).Or(wrword)
 }
 
-func (m Memory) Read32(addr uint32) st.Int32 {
-	if v, ok := m[addr>>2]; ok {
-		return v
-	}
-	panic(fmt.Sprintf("invalid memory access at 0x%08x", addr))
+func (m Memory) Read32(addr uint32) (st.Int32, bool) {
+	v, ok := m[addr>>2]
+	return v, ok
 }
 
-func (m Memory) Read16(addr uint32) st.Int32 {
+func (m Memory) Read16(addr uint32) (st.Int32, bool) {
 	rdb := st.Uint64{C: uint64(addr & 0b11)}
 	if v, ok := m[addr>>2]; ok {
-		return v.Lsh(rdb).ToInt16().ToInt32()
+		return v.Lsh(rdb).ToInt16().ToInt32(), true
 	}
-	panic(fmt.Sprintf("invalid memory access at 0x%08x", addr))
+	return st.Int32{}, false
 }
 
-func (m Memory) Read8(addr uint32) st.Int32 {
+func (m Memory) Read8(addr uint32) (st.Int32, bool) {
 	rdb := st.Uint64{C: uint64(addr & 0b11)}
 	if v, ok := m[addr>>2]; ok {
-		return v.Lsh(rdb).ToInt8().ToInt32()
+		return v.Lsh(rdb).ToInt8().ToInt32(), true
 	}
-	panic(fmt.Sprintf("invalid memory access at 0x%08x", addr))
+	return st.Int32{}, false
 }
 
-func (m Memory) Read16u(addr uint32) st.Int32 {
+func (m Memory) Read16u(addr uint32) (st.Int32, bool) {
 	rdb := st.Uint64{C: uint64(addr & 0b11)}
 	if v, ok := m[addr>>2]; ok {
-		return v.Lsh(rdb).ToUint16().ToInt32()
+		return v.Lsh(rdb).ToUint16().ToInt32(), true
 	}
-	panic(fmt.Sprintf("invalid memory access at 0x%08x", addr))
+	return st.Int32{}, false
 }
 
-func (m Memory) Read8u(addr uint32) st.Int32 {
+func (m Memory) Read8u(addr uint32) (st.Int32, bool) {
 	rdb := st.Uint64{C: uint64(addr & 0b11)}
 	if v, ok := m[addr>>2]; ok {
-		return v.Lsh(rdb).ToUint8().ToInt32()
+		return v.Lsh(rdb).ToUint8().ToInt32(), true
 	}
-	panic(fmt.Sprintf("invalid memory access at 0x%08x", addr))
+	return st.Int32{}, false
 }
