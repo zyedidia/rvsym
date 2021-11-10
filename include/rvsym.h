@@ -47,5 +47,5 @@ static inline void rvsym_fail() {
 #define rvsym_assume(x)          \
     do {                         \
         if (!(x))                \
-            rvsym_quiet_exit(0); \
+            rvsym_quiet_exit(); \
     } while (0)

@@ -197,6 +197,8 @@ func (m *Machine) concretize(val st.Int32) int32 {
 		return val.C
 	}
 
+	fmt.Println("INFO: concretizing")
+
 	s, err := m.Solver()
 	if err != nil {
 		m.Exit(ExitConcretize)
