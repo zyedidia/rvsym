@@ -5,3 +5,4 @@
 *.elf
 rvsym
 !/cmd/rvsym
+obj_dir
