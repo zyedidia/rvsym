@@ -1,8 +1,8 @@
 #include "rvsym.h"
 
 int mystery(int n[6]) {
-    for (int i = 0; i < 6; i++) {
-        if (n[i] != n[0] + i + i) {
+    for (int i = 1; i < 6; i++) {
+        if (n[i] != n[0] + n[i-1] + i) {
             return 0;
         }
     }
