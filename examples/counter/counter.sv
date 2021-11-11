@@ -10,7 +10,7 @@ module counter
     logic [31:0] q_reg = 0;
     logic [31:0] q_next;
 
-    always_ff @(posedge clk, posedge rst) begin
+    always_ff @(posedge clk) begin
         if (rst) begin
             q_reg <= 32'b0;
         end else begin
