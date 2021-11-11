@@ -3,6 +3,7 @@ package rvsym
 import (
 	"bytes"
 	"fmt"
+	"sort"
 
 	"github.com/zyedidia/go-z3/st"
 	"github.com/zyedidia/go-z3/z3"
@@ -116,7 +117,18 @@ func (e *Engine) UniverseInput(n int) TestCase {
 		}
 	}
 
-	for addr, val := range m.mem {
+	keys := make([]uint32, len(m.mem))
+	i := 0
+	for k := range m.mem {
+		keys[i] = k
+		i++
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i] < keys[j]
+	})
+
+	for _, addr := range keys {
+		val := m.mem[addr]
 		if !val.IsConcrete() {
 			testcase = append(testcase, TestVal{
 				Name:  fmt.Sprintf("0x%x", addr*4),
