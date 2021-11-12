@@ -18,6 +18,9 @@ LDFLAGS=-T memmap.ld -melf32lriscv -L/opt/riscv/riscv32-unknown-elf/lib
 
 LIBOBJ=lib/start.o lib/libc.o
 
+# YOSYS_INCLUDE=../../../yosys
+YOSYS_INCLUDE=$(shell yosys-config --datdir)/include
+
 all: counter.bin
 
 counter.o: counter.cc counter.hh
@@ -27,7 +30,7 @@ counter.bin: counter.o
 	yosys -q -p 'read_verilog -sv -noautowire $<; write_cxxrtl -g0 -O4 $@'
 
 %.o: %.cc %.hh
-	$(CXX) $(CXXFLAGS) -I$(shell yosys-config --datdir)/include -c $< -o $@
+	$(CXX) $(CXXFLAGS) -I$(YOSYS_INCLUDE) -c $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

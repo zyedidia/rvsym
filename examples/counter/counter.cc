@@ -6,19 +6,8 @@
 #include "rvsym.h"
 #include "counter.hh"
 
-int main() {
-    cxxrtl_design::p_counter counter;
-
-    uint32_t count;
-    rvsym_mark_bytes(&count, 4);
-
-    uint32_t result;
-    rvsym_mark_bytes(&result, 4);
-
-    rvsym_assume(count <= 10000);
-    rvsym_assume(result > 10000);
-
-    counter.p_q__reg.set<uint32_t>(count);
+uint32_t eval_one_cycle(cxxrtl_design::p_counter& counter, uint32_t current) {
+    counter.p_q__reg.set<uint32_t>(current);
 
     counter.p_clk.set<bool>(false);
     counter.step();
@@ -28,11 +17,27 @@ int main() {
 
     counter.step();
 
-    uint32_t next_count = counter.p_q.get<uint32_t>();
+    return counter.p_q.get<uint32_t>();
+}
+
+int main() {
+    cxxrtl_design::p_counter counter;
+
+    uint32_t initial;
+    rvsym_mark_bytes(&initial, 4);
+
+    uint32_t result;
+    rvsym_mark_bytes(&result, 4);
+
+    rvsym_assume(initial > 10000);
+    rvsym_assume(result <= 10000);
+
+    uint32_t next_count = eval_one_cycle(counter, initial);
 
     if (next_count == result) {
         rvsym_fail();
     }
 
-    return next_count;
+    rvsym_quiet_exit();
+    return 0;
 }
