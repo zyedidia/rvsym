@@ -24,13 +24,13 @@ int main() {
     cxxrtl_design::p_counter counter;
 
     uint32_t initial;
-    rvsym_mark_bytes(&initial, 4);
+    rvsym_mark_bytes(&initial, 4, "initial");
 
     uint32_t result;
-    rvsym_mark_bytes(&result, 4);
+    rvsym_mark_bytes(&result, 4, "result");
 
-    rvsym_assume(initial <= 10000);
-    rvsym_assume(result > 10000);
+    rvsym_assume(initial > 10000);
+    rvsym_assume(result <= 10000);
 
     uint32_t next_count = eval_one_cycle(counter, initial);
 

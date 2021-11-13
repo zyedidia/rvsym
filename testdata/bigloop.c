@@ -2,7 +2,7 @@
 
 int main() {
     int n;
-    rvsym_mark_bytes(&n, sizeof(n));
+    rvsym_mark_bytes(&n, sizeof(n), "n");
 
     rvsym_assume(n < 10);
 

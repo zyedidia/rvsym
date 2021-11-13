@@ -1,14 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"runtime/pprof"
 
 	"github.com/zyedidia/rvsym"
+	"github.com/zyedidia/rvsym/bininfo"
 )
 
 var summary = flag.Bool("summary", false, "provide a path exploration summary")
@@ -49,8 +52,16 @@ func main() {
 		steps += eng.NumMachines()
 	}
 
+	var dwarf io.ReaderAt
+	if len(args) > 1 {
+		dwarf, _ = os.Open(args[1])
+	} else {
+		dwarf = bytes.NewReader(bin)
+	}
+	binfo, _ := bininfo.Read(dwarf)
+
 	for i, tc := range eng.TestCases() {
-		fmt.Printf("--- Test case %d: %v at 0x%x ---\n", i, tc.Exit, tc.Addr)
+		fmt.Printf("--- Test case %d: %v at %s ---\n", i, tc.Exit, binfo.PosStr(uint64(tc.Addr)))
 		fmt.Print(tc)
 		fmt.Println("---")
 	}

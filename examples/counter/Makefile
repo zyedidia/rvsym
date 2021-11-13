@@ -11,8 +11,8 @@ OBJCOPY=$(PREFIX)objcopy
 OBJDUMP=$(PREFIX)objdump
 
 INC=-I../../include
-CXXFLAGS=$(INC) -Os -Wall -Werror -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=c++14
-CFLAGS=-Os -Wall -Werror -nostdlib -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=gnu99
+CXXFLAGS=$(INC) -Os -g -Wall -Werror -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=c++14
+CFLAGS=-Os -Wall -g -Werror -nostdlib -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=gnu99
 ASFLAGS=-march=rv32i -mabi=ilp32
 LDFLAGS=-T memmap.ld -melf32lriscv -L/opt/riscv/riscv32-unknown-elf/lib
 

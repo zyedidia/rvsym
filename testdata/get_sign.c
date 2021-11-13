@@ -13,7 +13,7 @@ int get_sign(int x) {
 int main() {
     int a;
 
-    rvsym_mark_bytes(&a, sizeof(a));
+    rvsym_mark_bytes(&a, sizeof(a), "a");
 
     return get_sign(a);
 }

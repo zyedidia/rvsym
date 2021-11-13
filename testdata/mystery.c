@@ -11,7 +11,7 @@ int mystery(int n[6]) {
 
 int main() {
     int n[6];
-    rvsym_mark_bytes(&n, sizeof(n));
+    rvsym_mark_bytes(&n, sizeof(n), "n");
 
     int r = mystery(n);
     if (r == 1) {

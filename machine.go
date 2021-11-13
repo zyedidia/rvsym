@@ -20,7 +20,12 @@ type Machine struct {
 
 	Status Status
 
-	marked []st.Int32
+	marked []Mark
+}
+
+type Mark struct {
+	val  st.Int32
+	name string
 }
 
 type Status struct {
@@ -60,7 +65,7 @@ func (m *Machine) Copy() *Machine {
 	regs := make([]st.Int32, len(m.regs))
 	conds := make([]z3.Bool, len(m.conds))
 	mem := make(map[uint32]st.Int32)
-	marked := make([]st.Int32, len(m.marked))
+	marked := make([]Mark, len(m.marked))
 
 	copy(regs, m.regs)
 	copy(conds, m.conds)
@@ -170,16 +175,17 @@ func (m *Machine) Exec(insn uint32) {
 	}
 }
 
-func (m *Machine) mark(val st.Int32) {
-	m.marked = append(m.marked, val)
+func (m *Machine) mark(val st.Int32, name string) {
+	m.marked = append(m.marked, Mark{val, name})
 }
 
 func (m *Machine) symcall(insn uint32, sysnum int) {
 	switch sysnum {
 	case SymSymbolicRegs:
 		for i := range m.regs[1:] {
-			m.regs[i+1] = st.AnyInt32(m.ctx, fmt.Sprintf("x%d", i+1))
-			m.mark(m.regs[i+1])
+			name := fmt.Sprintf("x%d", i+1)
+			m.regs[i+1] = st.AnyInt32(m.ctx, name)
+			m.mark(m.regs[i+1], name)
 		}
 	case SymSymbolicReg:
 		sysarg := m.regs[11] // a1
@@ -187,8 +193,9 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 			m.Status.Err = fmt.Errorf("required symcall argument is symbolic")
 			return
 		}
-		m.regs[sysarg.C] = st.AnyInt32(m.ctx, fmt.Sprintf("x%d", sysarg.C))
-		m.mark(m.regs[sysarg.C])
+		name := fmt.Sprintf("x%d", sysarg.C)
+		m.regs[sysarg.C] = st.AnyInt32(m.ctx, name)
+		m.mark(m.regs[sysarg.C], name)
 	case SymFail:
 		m.exit(ExitFail)
 	case SymExit:
@@ -196,8 +203,9 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 	case SymQuietExit:
 		m.exit(ExitQuiet)
 	case SymMarkNBytes:
-		ptr := m.regs[11]    // a1
-		nbytes := m.regs[12] // a2
+		ptr := m.regs[11]     // a1
+		nbytes := m.regs[12]  // a2
+		nameptr := m.regs[13] // a3
 
 		if !ptr.IsConcrete() {
 			m.Status.Err = fmt.Errorf("mark address is symbolic")
@@ -207,20 +215,38 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 			m.Status.Err = fmt.Errorf("mark size is symbolic")
 			return
 		}
+		if !nameptr.IsConcrete() {
+			m.Status.Err = fmt.Errorf("mark name address is symbolic")
+			return
+		}
+
+		nameb := &bytes.Buffer{}
+		for i := int32(0); ; i++ {
+			b, ok := m.mem.Read8u(uint32(nameptr.C + i))
+			if !ok || !b.IsConcrete() {
+				m.Status.Err = fmt.Errorf("out of bounds name while marking bytes")
+				return
+			}
+			if b.C == 0 {
+				break
+			}
+			nameb.WriteByte(byte(b.C))
+		}
+		name := nameb.String()
 
 		fmt.Printf("INFO: marking %d bytes at 0x%x\n", nbytes.C, ptr.C)
 
 		for i := int32(0); i < nbytes.C/4; i++ {
 			idx := i * 4
 			i32 := st.AnyInt32(m.ctx, fmt.Sprintf("0x%x", ptr.C+idx))
-			m.mark(i32)
+			m.mark(i32, fmt.Sprintf("%s[%d:%d]", name, idx, idx+3))
 			m.mem.Write32(uint32(ptr.C+idx), i32)
 		}
 		left := nbytes.C % 4
 		for i := int32(0); i < left; i++ {
 			idx := nbytes.C - left + i
 			i32 := st.AnyInt32(m.ctx, fmt.Sprintf("0x%x", ptr.C+idx))
-			m.mark(i32)
+			m.mark(i32, fmt.Sprintf("%s[%d]", name, idx))
 			m.mem.Write8(uint32(ptr.C+idx), i32)
 		}
 	case SymDump:
@@ -438,8 +464,8 @@ func (m *Machine) TestCase() (TestCase, error) {
 	vars := make([]Assignment, len(m.marked))
 	for i, v := range m.marked {
 		vars[i] = Assignment{
-			Name: v.String(),
-			Val:  v.Eval(model),
+			Name: v.name,
+			Val:  v.val.Eval(model),
 		}
 	}
 	return TestCase{
