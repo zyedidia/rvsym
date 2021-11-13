@@ -136,11 +136,15 @@ func (e *Engine) HasExit(m *Machine) bool {
 			tc, err := m.TestCase()
 			if err != ErrUnsat {
 				e.paths = append(e.paths, tc)
+			} else {
+				m.Status.Exit = ExitQuiet
 			}
 		case ExitFail:
 			tc, err := m.TestCase()
 			if err != ErrUnsat {
 				e.paths = append(e.paths, tc)
+			} else {
+				m.Status.Exit = ExitQuiet
 			}
 		case ExitQuiet:
 		}
@@ -151,4 +155,8 @@ func (e *Engine) HasExit(m *Machine) bool {
 
 func (e *Engine) TestCases() []TestCase {
 	return e.paths
+}
+
+func (e *Engine) NumMachines() int {
+	return len(e.machines)
 }

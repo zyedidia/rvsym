@@ -84,14 +84,14 @@ func (m *Machine) Copy() *Machine {
 func (m *Machine) AddCond(cond z3.Bool, checksat bool) {
 	m.conds = append(m.conds, cond)
 
-	if checksat {
-		_, err := m.Solver()
-		if err == ErrUnsat {
-			m.exit(ExitQuiet)
-		} else if err != nil {
-			m.Status.Err = err
-		}
-	}
+	// if checksat {
+	// 	_, err := m.Solver()
+	// 	if err == ErrUnsat {
+	// 		m.exit(ExitQuiet)
+	// 	} else if err != nil {
+	// 		m.Status.Err = err
+	// 	}
+	// }
 }
 
 // WriteReg writes the given value to the given register index.
