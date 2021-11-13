@@ -1,0 +1,12 @@
+INFO: marking 4 bytes at 0xff8b4
+--- Test case 0: failure at 0x2fcc ---
+invalid memory access at 0xff830
+instr[0:3] -> 0
+---
+--- Summary ---
+Instructions executed: 4047
+Total paths: 1
+Quiet exits: 0
+Normal exits: 0
+Failures: 1
+---
