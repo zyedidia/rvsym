@@ -4,6 +4,8 @@ int main() {
     int n;
     rvsym_mark_bytes(&n, sizeof(n));
 
+    rvsym_assume(n < 10);
+
     int x = 0;
     int y = 0;
     while (n > 0) {

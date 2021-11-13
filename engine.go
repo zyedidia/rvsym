@@ -3,17 +3,48 @@ package rvsym
 import (
 	"bytes"
 	"fmt"
-	"sort"
 
 	"github.com/zyedidia/go-z3/st"
 	"github.com/zyedidia/go-z3/z3"
 )
 
+type Assignment struct {
+	Name string
+	Val  int32
+}
+
+type TestCase struct {
+	Assignments []Assignment
+	Exit        ExitStatus
+	Addr        int32
+	Err         error // possible error this test case causes
+}
+
+func (tc TestCase) String() string {
+	buf := &bytes.Buffer{}
+	if tc.Err != nil {
+		buf.WriteString(tc.Err.Error())
+		buf.WriteByte('\n')
+	}
+	for _, a := range tc.Assignments {
+		buf.WriteString(fmt.Sprintf("%s -> %v\n", a.Name, a.Val))
+	}
+	return buf.String()
+}
+
 type Engine struct {
 	insns    []uint32
 	machines []*Machine
 
+	paths []TestCase
+
+	Stats Stats
+
 	ctx *z3.Context
+}
+
+type Stats struct {
+	Exits map[ExitStatus]int
 }
 
 func NewEngine(insns []uint32) *Engine {
@@ -28,114 +59,92 @@ func NewEngine(insns []uint32) *Engine {
 		insns:    insns,
 		ctx:      ctx,
 		machines: []*Machine{NewMachine(ctx, 0, mem)},
+		Stats: Stats{
+			Exits: make(map[ExitStatus]int),
+		},
 	}
 }
 
-type Exit struct {
-	Pc       int32
-	Universe int
-	Status   ExitStatus
-}
-
-func (e *Engine) Step() ([]Exit, bool) {
-	var exits []Exit
-
-	nmach := len(e.machines)
-	done := 0
-	for i := 0; i < nmach; i++ {
+func (e *Engine) Step() bool {
+	for i := 0; i < len(e.machines); {
 		m := e.machines[i]
 
-		if m.done {
-			done++
+		m.Exec(e.insns[m.pc/4])
+		if m.Status.Err != nil {
+			m.Status.Exit = ExitFail
+		}
+
+		if e.HandleExit(i) {
 			continue
-		}
-
-		br, ok, exit := m.Exec(e.insns[m.pc/4])
-		if exit != ExitNone {
-			exits = append(exits, Exit{Pc: m.pc, Universe: i, Status: exit})
-		}
-		if ok && br.cond.IsConcrete() {
-			if br.cond.C {
-				m.pc = br.pc
+		} else if m.Status.HasBr {
+			br := m.Status.Br
+			if br.cond.IsConcrete() {
+				if br.cond.C {
+					m.pc = br.pc
+				} else {
+					m.pc += 4
+				}
 			} else {
-				m.pc += 4
-			}
-		} else if ok {
-			copied := m.Copy()
-			copied.pc += 4
-			copied.AddCond(br.cond.S.Not())
-			e.machines = append(e.machines, copied)
+				copied := m.Copy()
+				copied.pc += 4
+				copied.AddCond(br.cond.S.Not(), true)
+				if !e.HasExit(copied) {
+					e.machines = append(e.machines, copied)
+				}
 
-			m.pc = br.pc
-			m.AddCond(br.cond.S)
+				m.pc = br.pc
+				m.AddCond(br.cond.S, true)
+
+				if e.HandleExit(i) {
+					continue
+				}
+			}
+			m.Status.ClearBranch()
 		} else {
 			m.pc += 4
 		}
-	}
-	return exits, done == len(e.machines)
-}
-
-func (e *Engine) Context() *z3.Context {
-	return e.ctx
-}
-
-func (e *Engine) NumUniverses() int {
-	return len(e.machines)
-}
-
-type TestVal struct {
-	Name  string
-	Value int32
-}
-
-type TestCase []TestVal
-
-func (t TestCase) String() string {
-	buf := &bytes.Buffer{}
-	for _, val := range t {
-		buf.WriteString(fmt.Sprintf("%s -> %d\n", val.Name, val.Value))
-	}
-	return buf.String()
-}
-
-func (e *Engine) UniverseInput(n int) TestCase {
-	m := e.machines[n]
-
-	s, err := m.Solver()
-	if err != nil {
-		return nil
-	}
-	model := s.Model()
-
-	testcase := make(TestCase, 0)
-	for i := range m.regs {
-		if !m.regs[i].IsConcrete() {
-			testcase = append(testcase, TestVal{
-				Name:  fmt.Sprintf("x%d", i),
-				Value: m.regs[i].Eval(model),
-			})
-		}
-	}
-
-	keys := make([]uint32, len(m.mem))
-	i := 0
-	for k := range m.mem {
-		keys[i] = k
 		i++
 	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
 
-	for _, addr := range keys {
-		val := m.mem[addr]
-		if !val.IsConcrete() {
-			testcase = append(testcase, TestVal{
-				Name:  fmt.Sprintf("0x%x", addr*4),
-				Value: val.Eval(model),
-			})
-		}
+	return len(e.machines) != 0
+}
+
+func (e *Engine) HandleExit(machidx int) bool {
+	m := e.machines[machidx]
+
+	if e.HasExit(m) {
+		e.machines[machidx] = e.machines[len(e.machines)-1]
+		e.machines[len(e.machines)-1] = nil
+		e.machines = e.machines[:len(e.machines)-1]
+
+		e.Stats.Exits[m.Status.Exit]++
+
+		return true
 	}
 
-	return testcase
+	return false
+}
+
+func (e *Engine) HasExit(m *Machine) bool {
+	if m.Status.Exit != ExitNone {
+		switch m.Status.Exit {
+		case ExitNormal:
+			tc, err := m.TestCase()
+			if err != ErrUnsat {
+				e.paths = append(e.paths, tc)
+			}
+		case ExitFail:
+			tc, err := m.TestCase()
+			if err != ErrUnsat {
+				e.paths = append(e.paths, tc)
+			}
+		case ExitQuiet:
+		}
+		return true
+	}
+	return false
+}
+
+func (e *Engine) TestCases() []TestCase {
+	return e.paths
 }

@@ -29,8 +29,8 @@ int main() {
     uint32_t result;
     rvsym_mark_bytes(&result, 4);
 
-    rvsym_assume(initial > 10000);
-    rvsym_assume(result <= 10000);
+    rvsym_assume(initial <= 10000);
+    rvsym_assume(result > 10000);
 
     uint32_t next_count = eval_one_cycle(counter, initial);
 

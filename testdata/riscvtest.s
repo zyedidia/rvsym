@@ -1,3 +1,4 @@
+#include "rvsym-asm.h"
 _start:
 main: addi x2, x0, 5
 addi x3, x0, 12
@@ -19,4 +20,4 @@ jal x3, end
 addi x2, x0, 1
 end: add x2, x2, x9
 sw x2, 0x20(x3)
-done: beq x2, x2, done
+done: rvsym_exit()

@@ -4,7 +4,7 @@ import (
 	"github.com/zyedidia/go-z3/st"
 )
 
-func alu(a, b st.Int32, op uint32, sub, arishift bool) st.Int32 {
+func alu(a, b st.Int32, op uint32, sub, sharith bool) st.Int32 {
 	switch op {
 	case AluAdd:
 		if sub {
@@ -21,7 +21,7 @@ func alu(a, b st.Int32, op uint32, sub, arishift bool) st.Int32 {
 	case AluXor:
 		return a.Xor(b)
 	case AluShr:
-		if arishift {
+		if sharith {
 			return a.Rsh(b.ToUint64())
 		} else {
 			return a.ToUint32().Rsh(b.ToUint64()).ToInt32()

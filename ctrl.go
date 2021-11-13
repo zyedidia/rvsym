@@ -55,13 +55,23 @@ const (
 type ExitStatus byte
 
 const (
-	ExitNormal = iota
+	ExitNone = iota
+	ExitNormal
 	ExitQuiet
 	ExitFail
-	ExitUnsure
-	ExitConcretize
-	ExitNone // not an exit
 )
+
+func (e ExitStatus) String() string {
+	switch e {
+	case ExitNone:
+		return "no exit"
+	case ExitNormal:
+		return "exit"
+	case ExitFail:
+		return "failure"
+	}
+	return "quiet"
+}
 
 const (
 	ExtByte  = 0b000
