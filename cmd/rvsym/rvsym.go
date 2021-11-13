@@ -77,5 +77,6 @@ func main() {
 		fmt.Printf("Quiet exits: %d\n", eng.Stats.Exits[rvsym.ExitQuiet])
 		fmt.Printf("Normal exits: %d\n", eng.Stats.Exits[rvsym.ExitNormal])
 		fmt.Printf("Failures: %d\n", eng.Stats.Exits[rvsym.ExitFail])
+		fmt.Println("---")
 	}
 }
