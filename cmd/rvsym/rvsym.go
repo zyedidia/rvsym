@@ -10,6 +10,7 @@ import (
 )
 
 var summary = flag.Bool("summary", false, "provide a path exploration summary")
+var max = flag.Int("max", -1, "Maximum number of machines (-1 for unlimited)")
 
 func main() {
 	flag.Parse()
@@ -26,6 +27,7 @@ func main() {
 
 	code := rvsym.LoadCode(bin)
 	eng := rvsym.NewEngine(code)
+	eng.MaxMachines = *max
 
 	for eng.Step() {
 	}

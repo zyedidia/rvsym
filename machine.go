@@ -176,12 +176,12 @@ func (m *Machine) mark(val st.Int32) {
 
 func (m *Machine) symcall(insn uint32, sysnum int) {
 	switch sysnum {
-	case SysSymbolicRegs:
+	case SymSymbolicRegs:
 		for i := range m.regs[1:] {
 			m.regs[i+1] = st.AnyInt32(m.ctx, fmt.Sprintf("x%d", i+1))
 			m.mark(m.regs[i+1])
 		}
-	case SysSymbolicReg:
+	case SymSymbolicReg:
 		sysarg := m.regs[11] // a1
 		if !sysarg.IsConcrete() {
 			m.Status.Err = fmt.Errorf("required symcall argument is symbolic")
@@ -189,13 +189,13 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 		}
 		m.regs[sysarg.C] = st.AnyInt32(m.ctx, fmt.Sprintf("x%d", sysarg.C))
 		m.mark(m.regs[sysarg.C])
-	case SysFail:
+	case SymFail:
 		m.exit(ExitFail)
-	case SysExit:
+	case SymExit:
 		m.exit(ExitNormal)
-	case SysQuietExit:
+	case SymQuietExit:
 		m.exit(ExitQuiet)
-	case SysMarkNBytes:
+	case SymMarkNBytes:
 		ptr := m.regs[11]    // a1
 		nbytes := m.regs[12] // a2
 
@@ -218,11 +218,13 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 		}
 		left := nbytes.C % 4
 		for i := int32(0); i < left; i++ {
-			idx := nbytes.C/4 + i
+			idx := nbytes.C - left + i
 			i32 := st.AnyInt32(m.ctx, fmt.Sprintf("0x%x", ptr.C+idx))
 			m.mark(i32)
 			m.mem.Write8(uint32(ptr.C+idx), i32)
 		}
+	case SymDump:
+		fmt.Print(m.String())
 	}
 }
 

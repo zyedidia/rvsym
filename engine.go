@@ -38,7 +38,8 @@ type Engine struct {
 
 	paths []TestCase
 
-	Stats Stats
+	Stats       Stats
+	MaxMachines int
 
 	ctx *z3.Context
 }
@@ -56,9 +57,10 @@ func NewEngine(insns []uint32) *Engine {
 	}
 
 	return &Engine{
-		insns:    insns,
-		ctx:      ctx,
-		machines: []*Machine{NewMachine(ctx, 0, mem)},
+		insns:       insns,
+		ctx:         ctx,
+		machines:    []*Machine{NewMachine(ctx, 0, mem)},
+		MaxMachines: -1,
 		Stats: Stats{
 			Exits: make(map[ExitStatus]int),
 		},
@@ -85,11 +87,13 @@ func (e *Engine) Step() bool {
 					m.pc += 4
 				}
 			} else {
-				copied := m.Copy()
-				copied.pc += 4
-				copied.AddCond(br.cond.S.Not(), true)
-				if !e.HasExit(copied) {
-					e.machines = append(e.machines, copied)
+				if e.MaxMachines == -1 || len(e.machines) < e.MaxMachines {
+					copied := m.Copy()
+					copied.pc += 4
+					copied.AddCond(br.cond.S.Not(), true)
+					if !e.HasExit(copied) {
+						e.machines = append(e.machines, copied)
+					}
 				}
 
 				m.pc = br.pc

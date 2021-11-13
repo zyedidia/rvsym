@@ -16,9 +16,9 @@
 
 #define rvsym_exit() RVSYM_SYS(RVSYM_EXIT)
 
-#define rvsym_quiet_exit() RVSYM_SYS(RVSYM_QUIET_EXIT)
+#define rvsym_dump() RVSYM_SYS(RVSYM_DUMP)
 
-#define rvsym_setup() RVSYM_SYS(RVSYM_SETUP)
+#define rvsym_quiet_exit() RVSYM_SYS(RVSYM_QUIET_EXIT)
 
 #define rvsym_choose(x) \
     li a1, x;           \

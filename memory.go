@@ -32,7 +32,7 @@ func (m Memory) Read32(addr uint32) (st.Int32, bool) {
 }
 
 func (m Memory) Read16(addr uint32) (st.Int32, bool) {
-	rdb := st.Uint64{C: uint64(addr & 0b11)}
+	rdb := st.Uint64{C: uint64(addr&0b11) * 8}
 	if v, ok := m[addr>>2]; ok {
 		return v.Rsh(rdb).ToInt16().ToInt32(), true
 	}
@@ -40,7 +40,7 @@ func (m Memory) Read16(addr uint32) (st.Int32, bool) {
 }
 
 func (m Memory) Read8(addr uint32) (st.Int32, bool) {
-	rdb := st.Uint64{C: uint64(addr & 0b11)}
+	rdb := st.Uint64{C: uint64(addr&0b11) * 8}
 	if v, ok := m[addr>>2]; ok {
 		return v.Rsh(rdb).ToInt8().ToInt32(), true
 	}
@@ -48,7 +48,7 @@ func (m Memory) Read8(addr uint32) (st.Int32, bool) {
 }
 
 func (m Memory) Read16u(addr uint32) (st.Int32, bool) {
-	rdb := st.Uint64{C: uint64(addr & 0b11)}
+	rdb := st.Uint64{C: uint64(addr&0b11) * 8}
 	if v, ok := m[addr>>2]; ok {
 		return v.Rsh(rdb).ToUint16().ToInt32(), true
 	}
@@ -56,7 +56,7 @@ func (m Memory) Read16u(addr uint32) (st.Int32, bool) {
 }
 
 func (m Memory) Read8u(addr uint32) (st.Int32, bool) {
-	rdb := st.Uint64{C: uint64(addr & 0b11)}
+	rdb := st.Uint64{C: uint64(addr&0b11) * 8}
 	if v, ok := m[addr>>2]; ok {
 		return v.Rsh(rdb).ToUint8().ToInt32(), true
 	}

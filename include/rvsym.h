@@ -44,6 +44,10 @@ static inline void rvsym_fail() {
     symcall_0(RVSYM_FAIL);
 }
 
+static inline void rvsym_dump() {
+    symcall_0(RVSYM_DUMP);
+}
+
 #define rvsym_assume(x)          \
     do {                         \
         if (!(x))                \

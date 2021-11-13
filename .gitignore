@@ -5,3 +5,4 @@
 *.elf
 rvsym
 !/cmd/rvsym
+a.out

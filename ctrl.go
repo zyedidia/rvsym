@@ -44,12 +44,13 @@ const (
 )
 
 const (
-	SysSymbolicRegs = iota
-	SysFail
-	SysSymbolicReg
-	SysExit
-	SysQuietExit
-	SysMarkNBytes
+	SymSymbolicRegs = iota
+	SymFail
+	SymSymbolicReg
+	SymExit
+	SymQuietExit
+	SymMarkNBytes
+	SymDump
 )
 
 type ExitStatus byte
