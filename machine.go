@@ -256,10 +256,13 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 
 func (m *Machine) rarith(insn uint32) {
 	aluop := GetBits(insn, 14, 12).Uint32() // funct3
-	modify := GetBits(insn, 30, 30).Uint32() != 0
 	rd, rs1, rs2 := extractRegs(insn)
+	funct7 := GetBits(insn, 31, 25).Uint32()
 
-	m.WriteReg(rd, alu(m.regs[rs1], m.regs[rs2], aluop, modify, modify))
+	modify := funct7 == 0b0100000
+	muldiv := funct7 == 0b0000001
+
+	m.WriteReg(rd, alu(m.regs[rs1], m.regs[rs2], aluop, modify, modify, muldiv))
 }
 
 func (m *Machine) iarith(insn uint32) {
@@ -268,7 +271,7 @@ func (m *Machine) iarith(insn uint32) {
 	imm := st.Int32{C: int32(extractImm(insn, ImmI))}
 	rd, rs1, _ := extractRegs(insn)
 
-	m.WriteReg(rd, alu(m.regs[rs1], imm, aluop, false, modify))
+	m.WriteReg(rd, alu(m.regs[rs1], imm, aluop, false, modify, false))
 }
 
 func (m *Machine) branch(insn uint32) {
@@ -286,7 +289,7 @@ func (m *Machine) branch(insn uint32) {
 		aluop = AluSltu
 	}
 
-	result := alu(m.regs[rs1], m.regs[rs2], aluop, false, false)
+	result := alu(m.regs[rs1], m.regs[rs2], aluop, false, false, false)
 
 	var cond st.Bool
 	switch funct3 {

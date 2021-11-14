@@ -31,6 +31,15 @@ const (
 	AluShr  = 0b101
 	AluOr   = 0b110
 	AluAnd  = 0b111
+
+	MAluMul    = 0b000
+	MAluMulH   = 0b001
+	MAluMulHSU = 0b010
+	MAluMulHU  = 0b011
+	MAluDiv    = 0b100
+	MAluDivU   = 0b101
+	MAluRem    = 0b110
+	MAluRemU   = 0b111
 )
 
 type ImmType byte

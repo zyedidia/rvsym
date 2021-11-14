@@ -4,7 +4,28 @@ import (
 	"github.com/zyedidia/go-z3/st"
 )
 
-func alu(a, b st.Int32, op uint32, sub, sharith bool) st.Int32 {
+func alu(a, b st.Int32, op uint32, sub, sharith, malu bool) st.Int32 {
+	if malu {
+		switch op {
+		case MAluMul:
+			return a.Mul(b)
+		case MAluMulH:
+			return a.ToInt64().Mul(b.ToInt64()).Upper32()
+		case MAluMulHSU:
+			return a.ToInt64().ToUint64().Mul(b.ToUint32().ToUint64()).Upper32()
+		case MAluMulHU:
+			return a.ToUint32().ToUint64().Mul(b.ToUint32().ToUint64()).Upper32()
+		case MAluDiv:
+			return a.Quo(b)
+		case MAluDivU:
+			return a.ToUint32().Quo(b.ToUint32()).ToInt32()
+		case MAluRem:
+			return a.Rem(b)
+		case MAluRemU:
+			return a.ToUint32().Rem(b.ToUint32()).ToInt32()
+		}
+	}
+
 	switch op {
 	case AluAdd:
 		if sub {
