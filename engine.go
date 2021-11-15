@@ -87,17 +87,26 @@ func (e *Engine) Step() bool {
 					m.pc += 4
 				}
 			} else {
-				if e.MaxMachines == -1 || len(e.machines) < e.MaxMachines {
+				if e.MaxMachines != -1 && len(e.machines) >= e.MaxMachines {
+					// need to select one branch or the other
+					if randbool() {
+						m.pc = br.pc
+						m.AddCond(br.cond.S, true)
+					} else {
+						m.pc += 4
+						m.AddCond(br.cond.S.Not(), true)
+					}
+				} else {
 					copied := m.Copy()
 					copied.pc += 4
 					copied.AddCond(br.cond.S.Not(), true)
 					if !e.HasExit(copied) {
 						e.machines = append(e.machines, copied)
 					}
-				}
 
-				m.pc = br.pc
-				m.AddCond(br.cond.S, true)
+					m.pc = br.pc
+					m.AddCond(br.cond.S, true)
+				}
 
 				if e.HandleExit(i) {
 					continue
