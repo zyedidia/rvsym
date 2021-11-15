@@ -21,6 +21,8 @@ type Machine struct {
 	Status Status
 
 	marked []Mark
+
+	stores []st.Int32
 }
 
 type Mark struct {
@@ -402,6 +404,44 @@ func (m *Machine) store(insn uint32) {
 	funct3 := GetBits(insn, 14, 12).Uint32()
 
 	rsval := m.regs[rs1]
+
+	addrsym := rsval.Add(st.Int32{C: int32(imm)})
+	fmt.Print("INFO: store at ")
+	if addrsym.IsConcrete() {
+		fmt.Printf("%x\n", addrsym.C)
+	} else {
+		fmt.Printf("%v\n", addrsym.S)
+	}
+
+	for i := len(m.stores) - 1; i >= 0; i-- {
+		a := m.stores[i]
+		s := z3.NewSolver(m.ctx)
+		for _, c := range m.conds {
+			s.Assert(c)
+		}
+		cond := a.Eq(addrsym)
+
+		if !cond.IsConcrete() {
+			s.Assert(cond.S)
+		}
+		if !cond.IsConcrete() || cond.C {
+			sat, err := s.Check()
+			if sat && err == nil {
+				model := s.Model()
+				sameaddr := addrsym.Eval(model)
+
+				if !cond.IsConcrete() {
+					m.conds = append(m.conds, cond.S)
+				}
+				m.Status.Err = fmt.Errorf("Stores to same addresses %x\n", sameaddr)
+				m.Status.Exit = ExitFail
+				return
+			}
+		}
+	}
+
+	m.stores = append(m.stores, addrsym)
+
 	if !rsval.IsConcrete() {
 		if c, ok := m.concretize(rsval); !ok {
 			return
