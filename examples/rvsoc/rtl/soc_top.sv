@@ -1,6 +1,6 @@
 module soc_top
     (
-        input logic clk, rst_n,
+        input logic clk, rst,
         
         input logic usr_btn,
 
@@ -22,9 +22,6 @@ module soc_top
         output logic rgb_led0_g,
         output logic rgb_led0_b
     );
-
-    logic rst;
-    assign rst = ~rst_n;
 
     `include "memmap.svh"
 
