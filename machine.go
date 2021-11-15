@@ -435,11 +435,9 @@ func (m *Machine) concretize(val st.Int32) (int32, bool) {
 		return val.C, true
 	}
 
-	fmt.Println("INFO: concretizing")
-
 	s, err := m.Solver()
 	if err == ErrUnsat {
-		m.exit(ExitQuiet)
+		m.exit(ExitUnsat)
 	} else if err != nil {
 		m.Status.Err = err
 	} else {

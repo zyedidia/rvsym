@@ -146,14 +146,14 @@ func (e *Engine) HasExit(m *Machine) bool {
 			if err != ErrUnsat {
 				e.paths = append(e.paths, tc)
 			} else {
-				m.Status.Exit = ExitQuiet
+				m.Status.Exit = ExitUnsat
 			}
 		case ExitFail:
 			tc, err := m.TestCase()
 			if err != ErrUnsat {
 				e.paths = append(e.paths, tc)
 			} else {
-				m.Status.Exit = ExitQuiet
+				m.Status.Exit = ExitUnsat
 			}
 		case ExitQuiet:
 		}

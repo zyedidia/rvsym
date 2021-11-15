@@ -60,6 +60,7 @@ const (
 	ExitNormal
 	ExitQuiet
 	ExitFail
+	ExitUnsat
 )
 
 func (e ExitStatus) String() string {
@@ -70,6 +71,8 @@ func (e ExitStatus) String() string {
 		return "exit"
 	case ExitFail:
 		return "failure"
+	case ExitUnsat:
+		return "unsat"
 	}
 	return "quiet"
 }

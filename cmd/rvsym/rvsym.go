@@ -75,6 +75,7 @@ func main() {
 		fmt.Printf("Instructions executed: %d\n", steps)
 		fmt.Printf("Total paths: %d\n", paths)
 		fmt.Printf("Quiet exits: %d\n", eng.Stats.Exits[rvsym.ExitQuiet])
+		fmt.Printf("Unsat exits: %d\n", eng.Stats.Exits[rvsym.ExitUnsat])
 		fmt.Printf("Normal exits: %d\n", eng.Stats.Exits[rvsym.ExitNormal])
 		fmt.Printf("Failures: %d\n", eng.Stats.Exits[rvsym.ExitFail])
 		fmt.Println("---")
