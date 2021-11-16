@@ -46,6 +46,7 @@ type Engine struct {
 
 type Stats struct {
 	Exits map[ExitStatus]int
+	Steps int
 }
 
 func NewEngine(insns []uint32) *Engine {
@@ -118,6 +119,7 @@ func (e *Engine) Step() bool {
 		}
 		i++
 	}
+	e.Stats.Steps += len(e.machines)
 
 	return len(e.machines) != 0
 }
@@ -152,6 +154,7 @@ func (e *Engine) HasExit(m *Machine) bool {
 			tc, err := m.TestCase()
 			if err != ErrUnsat {
 				e.paths = append(e.paths, tc)
+				fmt.Println("INFO: found failure")
 			} else {
 				m.Status.Exit = ExitUnsat
 			}
@@ -168,4 +171,21 @@ func (e *Engine) TestCases() []TestCase {
 
 func (e *Engine) NumMachines() int {
 	return len(e.machines)
+}
+
+func (e *Engine) Summary() string {
+	buf := &bytes.Buffer{}
+	paths := 0
+	for _, v := range e.Stats.Exits {
+		paths += v
+	}
+	fmt.Fprintln(buf, "--- Summary ---")
+	fmt.Fprintf(buf, "Instructions executed: %d\n", e.Stats.Steps)
+	fmt.Fprintf(buf, "Total paths: %d\n", paths)
+	fmt.Fprintf(buf, "Quiet exits: %d\n", e.Stats.Exits[ExitQuiet])
+	fmt.Fprintf(buf, "Unsat exits: %d\n", e.Stats.Exits[ExitUnsat])
+	fmt.Fprintf(buf, "Normal exits: %d\n", e.Stats.Exits[ExitNormal])
+	fmt.Fprintf(buf, "Failures: %d\n", e.Stats.Exits[ExitFail])
+	fmt.Fprintln(buf, "---")
+	return buf.String()
 }
