@@ -91,10 +91,18 @@ func (e *Engine) Step() bool {
 				m.pc += 4
 			}
 		} else {
-			checkpoint := m.Checkpoint(br.cond.S.Not())
-			checkpoint.pc += 4
-			e.checkpoints = append(e.checkpoints, checkpoint)
+			nobr := br.cond.S.Not()
+
 			e.solver.Push()
+			e.solver.Assert(nobr)
+			sat, err := e.solver.Check()
+			e.solver.Pop()
+			if sat || err != nil {
+				checkpoint := m.Checkpoint(nobr)
+				checkpoint.pc += 4
+				e.checkpoints = append(e.checkpoints, checkpoint)
+				e.solver.Push()
+			}
 
 			m.pc = br.pc
 			m.AddCond(br.cond.S, true)
