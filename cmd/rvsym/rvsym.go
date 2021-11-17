@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"runtime/pprof"
 
 	"github.com/zyedidia/rvsym"
@@ -47,11 +48,6 @@ func main() {
 	eng := rvsym.NewEngine(code)
 	eng.MaxMachines = *max
 
-	steps := 0
-	for eng.Step() {
-		steps += eng.NumMachines()
-	}
-
 	var dwarf io.ReaderAt
 	if len(args) > 1 {
 		dwarf, _ = os.Open(args[1])
@@ -60,6 +56,24 @@ func main() {
 	}
 	binfo, _ := bininfo.Read(dwarf)
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			for i, tc := range eng.TestCases() {
+				fmt.Printf("--- Test case %d: %v at %s ---\n", i, tc.Exit, binfo.PosStr(uint64(tc.Addr)))
+				fmt.Print(tc)
+				fmt.Println("---")
+			}
+
+			fmt.Print(eng.Summary())
+			os.Exit(1)
+		}
+	}()
+
+	for eng.Step() {
+	}
+
 	for i, tc := range eng.TestCases() {
 		fmt.Printf("--- Test case %d: %v at %s ---\n", i, tc.Exit, binfo.PosStr(uint64(tc.Addr)))
 		fmt.Print(tc)
@@ -67,16 +81,6 @@ func main() {
 	}
 
 	if *summary {
-		paths := 0
-		for _, v := range eng.Stats.Exits {
-			paths += v
-		}
-		fmt.Println("--- Summary ---")
-		fmt.Printf("Instructions executed: %d\n", steps)
-		fmt.Printf("Total paths: %d\n", paths)
-		fmt.Printf("Quiet exits: %d\n", eng.Stats.Exits[rvsym.ExitQuiet])
-		fmt.Printf("Normal exits: %d\n", eng.Stats.Exits[rvsym.ExitNormal])
-		fmt.Printf("Failures: %d\n", eng.Stats.Exits[rvsym.ExitFail])
-		fmt.Println("---")
+		fmt.Print(eng.Summary())
 	}
 }

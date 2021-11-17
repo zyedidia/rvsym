@@ -46,6 +46,7 @@ type Engine struct {
 
 type Stats struct {
 	Exits map[ExitStatus]int
+	Steps int
 }
 
 func NewEngine(insns []uint32) *Engine {
@@ -87,17 +88,26 @@ func (e *Engine) Step() bool {
 					m.pc += 4
 				}
 			} else {
-				if e.MaxMachines == -1 || len(e.machines) < e.MaxMachines {
+				if e.MaxMachines != -1 && len(e.machines) >= e.MaxMachines {
+					// need to select one branch or the other
+					if randbool() {
+						m.pc = br.pc
+						m.AddCond(br.cond.S, true)
+					} else {
+						m.pc += 4
+						m.AddCond(br.cond.S.Not(), true)
+					}
+				} else {
 					copied := m.Copy()
 					copied.pc += 4
 					copied.AddCond(br.cond.S.Not(), true)
 					if !e.HasExit(copied) {
 						e.machines = append(e.machines, copied)
 					}
-				}
 
-				m.pc = br.pc
-				m.AddCond(br.cond.S, true)
+					m.pc = br.pc
+					m.AddCond(br.cond.S, true)
+				}
 
 				if e.HandleExit(i) {
 					continue
@@ -109,6 +119,7 @@ func (e *Engine) Step() bool {
 		}
 		i++
 	}
+	e.Stats.Steps += len(e.machines)
 
 	return len(e.machines) != 0
 }
@@ -137,14 +148,15 @@ func (e *Engine) HasExit(m *Machine) bool {
 			if err != ErrUnsat {
 				e.paths = append(e.paths, tc)
 			} else {
-				m.Status.Exit = ExitQuiet
+				m.Status.Exit = ExitUnsat
 			}
 		case ExitFail:
 			tc, err := m.TestCase()
 			if err != ErrUnsat {
 				e.paths = append(e.paths, tc)
+				fmt.Println("INFO: found failure")
 			} else {
-				m.Status.Exit = ExitQuiet
+				m.Status.Exit = ExitUnsat
 			}
 		case ExitQuiet:
 		}
@@ -159,4 +171,21 @@ func (e *Engine) TestCases() []TestCase {
 
 func (e *Engine) NumMachines() int {
 	return len(e.machines)
+}
+
+func (e *Engine) Summary() string {
+	buf := &bytes.Buffer{}
+	paths := 0
+	for _, v := range e.Stats.Exits {
+		paths += v
+	}
+	fmt.Fprintln(buf, "--- Summary ---")
+	fmt.Fprintf(buf, "Instructions executed: %d\n", e.Stats.Steps)
+	fmt.Fprintf(buf, "Total paths: %d\n", paths)
+	fmt.Fprintf(buf, "Quiet exits: %d\n", e.Stats.Exits[ExitQuiet])
+	fmt.Fprintf(buf, "Unsat exits: %d\n", e.Stats.Exits[ExitUnsat])
+	fmt.Fprintf(buf, "Normal exits: %d\n", e.Stats.Exits[ExitNormal])
+	fmt.Fprintf(buf, "Failures: %d\n", e.Stats.Exits[ExitFail])
+	fmt.Fprintln(buf, "---")
+	return buf.String()
 }

@@ -14,7 +14,7 @@ INC=-I../../include
 CXXFLAGS=$(INC) -Os -g -Wall -Werror -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=c++14
 CFLAGS=-Os -Wall -g -Werror -nostdlib -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=gnu99
 ASFLAGS=-march=rv32i -mabi=ilp32
-LDFLAGS=-T memmap.ld -melf32lriscv -L/opt/riscv/riscv32-unknown-elf/lib
+LDFLAGS=-T memmap.ld -melf32lriscv -L/opt/riscv/riscv64-unknown-elf/lib/rv32i/ilp32
 
 LIBOBJ=lib/start.o lib/libc.o
 

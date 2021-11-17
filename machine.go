@@ -16,7 +16,8 @@ type Machine struct {
 	conds []z3.Bool
 	mem   Memory
 
-	ctx *z3.Context
+	ctx    *z3.Context
+	solver *z3.Solver
 
 	Status Status
 
@@ -53,10 +54,11 @@ func NewMachine(ctx *z3.Context, pc int32, mem Memory) *Machine {
 	}
 
 	return &Machine{
-		pc:   pc,
-		regs: regs,
-		mem:  mem,
-		ctx:  ctx,
+		pc:     pc,
+		regs:   regs,
+		mem:    mem,
+		ctx:    ctx,
+		solver: z3.NewSolver(ctx),
 	}
 }
 
@@ -75,6 +77,11 @@ func (m *Machine) Copy() *Machine {
 		mem[k] = v
 	}
 
+	solver := z3.NewSolver(m.ctx)
+	for _, cond := range m.conds {
+		solver.Assert(cond)
+	}
+
 	return &Machine{
 		pc:     m.pc,
 		regs:   regs,
@@ -82,6 +89,7 @@ func (m *Machine) Copy() *Machine {
 		mem:    mem,
 		ctx:    m.ctx,
 		marked: marked,
+		solver: solver,
 	}
 }
 
@@ -89,14 +97,16 @@ func (m *Machine) Copy() *Machine {
 func (m *Machine) AddCond(cond z3.Bool, checksat bool) {
 	m.conds = append(m.conds, cond)
 
-	// if checksat {
-	// 	_, err := m.Solver()
-	// 	if err == ErrUnsat {
-	// 		m.exit(ExitQuiet)
-	// 	} else if err != nil {
-	// 		m.Status.Err = err
-	// 	}
-	// }
+	m.solver.Assert(cond)
+
+	if checksat {
+		_, err := m.Solver()
+		if err == ErrUnsat {
+			m.exit(ExitUnsat)
+		} else if err != nil {
+			m.Status.Err = err
+		}
+	}
 }
 
 // WriteReg writes the given value to the given register index.
@@ -118,10 +128,7 @@ func (s SolverErr) Error() string {
 
 // Generate a solver
 func (m *Machine) Solver() (*z3.Solver, error) {
-	s := z3.NewSolver(m.ctx)
-	for _, c := range m.conds {
-		s.Assert(c)
-	}
+	s := m.solver
 	sat, err := s.Check()
 	if err != nil {
 		return nil, err
@@ -440,7 +447,7 @@ func (m *Machine) concretize(val st.Int32) (int32, bool) {
 
 	s, err := m.Solver()
 	if err == ErrUnsat {
-		m.exit(ExitQuiet)
+		m.exit(ExitUnsat)
 	} else if err != nil {
 		m.Status.Err = err
 	} else {

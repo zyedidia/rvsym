@@ -6,3 +6,5 @@
 rvsym
 !/cmd/rvsym
 a.out
+prof.out
+out.txt
