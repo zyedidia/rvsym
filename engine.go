@@ -20,14 +20,18 @@ type TestCase struct {
 	Err         error // possible error this test case causes
 }
 
-func (tc TestCase) String() string {
+func (tc TestCase) String(hex bool) string {
 	buf := &bytes.Buffer{}
 	if tc.Err != nil {
 		buf.WriteString(tc.Err.Error())
 		buf.WriteByte('\n')
 	}
 	for _, a := range tc.Assignments {
-		buf.WriteString(fmt.Sprintf("%s -> %v\n", a.Name, a.Val))
+		if hex {
+			buf.WriteString(fmt.Sprintf("%s -> 0x%x\n", a.Name, uint32(a.Val)))
+		} else {
+			buf.WriteString(fmt.Sprintf("%s -> %d\n", a.Name, a.Val))
+		}
 	}
 	return buf.String()
 }

@@ -18,6 +18,7 @@ import (
 var summary = flag.Bool("summary", false, "provide a path exploration summary")
 var max = flag.Int("max", -1, "Maximum number of machines (-1 for unlimited)")
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+var hex = flag.Bool("hex", false, "print test cases in hex")
 
 func main() {
 	flag.Parse()
@@ -62,7 +63,7 @@ func main() {
 		for range c {
 			for i, tc := range eng.TestCases() {
 				fmt.Printf("--- Test case %d: %v at %s ---\n", i, tc.Exit, binfo.PosStr(uint64(tc.Addr)))
-				fmt.Print(tc)
+				fmt.Print(tc.String(*hex))
 				fmt.Println("---")
 			}
 
@@ -76,7 +77,7 @@ func main() {
 
 	for i, tc := range eng.TestCases() {
 		fmt.Printf("--- Test case %d: %v at %s ---\n", i, tc.Exit, binfo.PosStr(uint64(tc.Addr)))
-		fmt.Print(tc)
+		fmt.Print(tc.String(*hex))
 		fmt.Println("---")
 	}
 
