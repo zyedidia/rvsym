@@ -11,10 +11,9 @@ import (
 
 // A Machine stores the state for one execution path of the program.
 type Machine struct {
-	pc    int32
-	regs  []st.Int32
-	conds []z3.Bool
-	mem   Memory
+	pc   int32
+	regs []st.Int32
+	mem  Memory
 
 	ctx    *z3.Context
 	solver *z3.Solver
@@ -22,6 +21,15 @@ type Machine struct {
 	Status Status
 
 	marked []Mark
+}
+
+type Checkpoint struct {
+	pc     int32
+	regs   []st.Int32
+	mem    Memory
+	marked []Mark
+
+	cond z3.Bool
 }
 
 type Mark struct {
@@ -47,7 +55,7 @@ func (s *Status) ClearBranch() {
 
 // NewMachine returns a new machine, with the given initial memory and program
 // counter.
-func NewMachine(ctx *z3.Context, pc int32, mem Memory) *Machine {
+func NewMachine(ctx *z3.Context, solver *z3.Solver, pc int32, mem Memory) *Machine {
 	regs := make([]st.Int32, 32)
 	for i := range regs {
 		regs[i] = st.Int32{C: 0}
@@ -58,45 +66,45 @@ func NewMachine(ctx *z3.Context, pc int32, mem Memory) *Machine {
 		regs:   regs,
 		mem:    mem,
 		ctx:    ctx,
-		solver: z3.NewSolver(ctx),
+		solver: solver,
 	}
 }
 
-// Copy this machine.
-func (m *Machine) Copy() *Machine {
-	regs := make([]st.Int32, len(m.regs))
-	conds := make([]z3.Bool, len(m.conds))
-	mem := make(map[uint32]st.Int32)
-	marked := make([]Mark, len(m.marked))
+func Restore(cp *Checkpoint, ctx *z3.Context, solver *z3.Solver) *Machine {
+	solver.Assert(cp.cond)
+	return &Machine{
+		pc:     cp.pc,
+		regs:   cp.regs,
+		mem:    cp.mem,
+		marked: cp.marked,
+		ctx:    ctx,
+		solver: solver,
+	}
+}
 
-	copy(regs, m.regs)
-	copy(conds, m.conds)
-	copy(marked, m.marked)
+func (m *Machine) Checkpoint(cond z3.Bool) *Checkpoint {
+	cpregs := make([]st.Int32, len(m.regs))
+	cpmem := make(Memory)
+	cpmarked := make([]Mark, len(m.marked))
+
+	copy(cpregs, m.regs)
+	copy(cpmarked, m.marked)
 
 	for k, v := range m.mem {
-		mem[k] = v
+		cpmem[k] = v
 	}
 
-	solver := z3.NewSolver(m.ctx)
-	for _, cond := range m.conds {
-		solver.Assert(cond)
-	}
-
-	return &Machine{
+	return &Checkpoint{
+		cond:   cond,
+		regs:   cpregs,
+		mem:    cpmem,
+		marked: cpmarked,
 		pc:     m.pc,
-		regs:   regs,
-		conds:  conds,
-		mem:    mem,
-		ctx:    m.ctx,
-		marked: marked,
-		solver: solver,
 	}
 }
 
 // AddCond adds a condition to the list of path constraints of this machine.
 func (m *Machine) AddCond(cond z3.Bool, checksat bool) {
-	m.conds = append(m.conds, cond)
-
 	m.solver.Assert(cond)
 
 	if checksat {

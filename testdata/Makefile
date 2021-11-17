@@ -17,8 +17,8 @@ OBJDUMP=$(PREFIX)objdump
 startobj = lib/start.o
 
 INC=-I../include
-CFLAGS=$(INC) -Os -g -Wall -Werror -nostdlib -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=gnu99
-ASFLAGS=-march=rv32i -mabi=ilp32
+CFLAGS=$(INC) -Os -g -Wall -Werror -nostdlib -nostartfiles -ffreestanding -march=rv32im -mabi=ilp32 -std=gnu99
+ASFLAGS=-march=rv32im -mabi=ilp32
 LDFLAGS=-T memmap.ld -melf32lriscv -nostdlib
 
 all: $(PROGS)

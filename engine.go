@@ -33,15 +33,17 @@ func (tc TestCase) String() string {
 }
 
 type Engine struct {
-	insns    []uint32
-	machines []*Machine
+	insns       []uint32
+	checkpoints []*Checkpoint
+	active      *Machine
 
 	paths []TestCase
 
 	Stats       Stats
 	MaxMachines int
 
-	ctx *z3.Context
+	solver *z3.Solver
+	ctx    *z3.Context
 }
 
 type Stats struct {
@@ -51,6 +53,7 @@ type Stats struct {
 
 func NewEngine(insns []uint32) *Engine {
 	ctx := z3.NewContext(nil)
+	sol := z3.NewSolver(ctx)
 	mem := make(Memory)
 
 	for i, ins := range insns {
@@ -60,7 +63,8 @@ func NewEngine(insns []uint32) *Engine {
 	return &Engine{
 		insns:       insns,
 		ctx:         ctx,
-		machines:    []*Machine{NewMachine(ctx, 0, mem)},
+		solver:      sol,
+		active:      NewMachine(ctx, sol, 0, mem),
 		MaxMachines: -1,
 		Stats: Stats{
 			Exits: make(map[ExitStatus]int),
@@ -69,74 +73,56 @@ func NewEngine(insns []uint32) *Engine {
 }
 
 func (e *Engine) Step() bool {
-	for i := 0; i < len(e.machines); {
-		m := e.machines[i]
+	m := e.active
 
-		m.Exec(e.insns[m.pc/4])
-		if m.Status.Err != nil {
-			m.Status.Exit = ExitFail
-		}
-
-		if e.HandleExit(i) {
-			continue
-		} else if m.Status.HasBr {
-			br := m.Status.Br
-			if br.cond.IsConcrete() {
-				if br.cond.C {
-					m.pc = br.pc
-				} else {
-					m.pc += 4
-				}
-			} else {
-				if e.MaxMachines != -1 && len(e.machines) >= e.MaxMachines {
-					// need to select one branch or the other
-					if randbool() {
-						m.pc = br.pc
-						m.AddCond(br.cond.S, true)
-					} else {
-						m.pc += 4
-						m.AddCond(br.cond.S.Not(), true)
-					}
-				} else {
-					copied := m.Copy()
-					copied.pc += 4
-					copied.AddCond(br.cond.S.Not(), true)
-					if !e.HasExit(copied) {
-						e.machines = append(e.machines, copied)
-					}
-
-					m.pc = br.pc
-					m.AddCond(br.cond.S, true)
-				}
-
-				if e.HandleExit(i) {
-					continue
-				}
-			}
-			m.Status.ClearBranch()
-		} else {
-			m.pc += 4
-		}
-		i++
+	m.Exec(e.insns[m.pc/4])
+	if m.Status.Err != nil {
+		m.Status.Exit = ExitFail
 	}
-	e.Stats.Steps += len(e.machines)
 
-	return len(e.machines) != 0
+	if e.HandleExit(m) {
+		return e.active != nil
+	} else if m.Status.HasBr {
+		br := m.Status.Br
+		if br.cond.IsConcrete() {
+			if br.cond.C {
+				m.pc = br.pc
+			} else {
+				m.pc += 4
+			}
+		} else {
+			checkpoint := m.Checkpoint(br.cond.S.Not())
+			checkpoint.pc += 4
+			e.checkpoints = append(e.checkpoints, checkpoint)
+			e.solver.Push()
+
+			m.pc = br.pc
+			m.AddCond(br.cond.S, true)
+		}
+
+		if e.HandleExit(m) {
+			return e.active != nil
+		}
+		m.Status.ClearBranch()
+	} else {
+		m.pc += 4
+	}
+	e.Stats.Steps++
+
+	return e.active != nil
 }
 
-func (e *Engine) HandleExit(machidx int) bool {
-	m := e.machines[machidx]
-
+func (e *Engine) HandleExit(m *Machine) bool {
 	if e.HasExit(m) {
-		e.machines[machidx] = e.machines[len(e.machines)-1]
-		e.machines[len(e.machines)-1] = nil
-		e.machines = e.machines[:len(e.machines)-1]
-
+		e.active = nil
+		if len(e.checkpoints) > 0 {
+			e.solver.Pop()
+			e.active = Restore(e.checkpoints[len(e.checkpoints)-1], e.ctx, e.solver)
+			e.checkpoints = e.checkpoints[:len(e.checkpoints)-1]
+		}
 		e.Stats.Exits[m.Status.Exit]++
-
 		return true
 	}
-
 	return false
 }
 
@@ -167,10 +153,6 @@ func (e *Engine) HasExit(m *Machine) bool {
 
 func (e *Engine) TestCases() []TestCase {
 	return e.paths
-}
-
-func (e *Engine) NumMachines() int {
-	return len(e.machines)
 }
 
 func (e *Engine) Summary() string {
