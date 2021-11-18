@@ -17,8 +17,8 @@ int main() {
     rvsym_mark_bytes(&instr, 4, "instr");
     soc.memory_p_ram__unit_2e_mem[0].set<uint32_t>(instr);
 
-    // rvsym_assume(((instr >> 7) & 0x1f) == 1);
-    rvsym_assume(instr == 0x02a00093);
+    rvsym_assume(((instr >> 7) & 0x1f) == 1);
+    // rvsym_assume(instr == 0x02a00093);
 
     soc.p_clk.set<bool>(false);
     soc.step();
@@ -52,6 +52,6 @@ int main() {
     if (x1 != 0) {
         rvsym_fail();
     }
-    rvsym_exit();
+    rvsym_quiet_exit();
     return 0;
 }

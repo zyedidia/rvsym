@@ -58,7 +58,7 @@ type Stats struct {
 func NewEngine(insns []uint32) *Engine {
 	ctx := z3.NewContext(nil)
 	sol := z3.NewSolver(ctx)
-	mem := make(Memory)
+	mem := NewMemory(nil)
 
 	for i, ins := range insns {
 		mem.Write32(uint32(i*4), st.Int32{C: int32(ins)})

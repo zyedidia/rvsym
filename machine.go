@@ -3,7 +3,6 @@ package rvsym
 import (
 	"bytes"
 	"fmt"
-	"sort"
 
 	"github.com/zyedidia/go-z3/st"
 	"github.com/zyedidia/go-z3/z3"
@@ -13,7 +12,7 @@ import (
 type Machine struct {
 	pc   int32
 	regs []st.Int32
-	mem  Memory
+	mem  *Memory
 
 	ctx    *z3.Context
 	solver *z3.Solver
@@ -26,7 +25,7 @@ type Machine struct {
 type Checkpoint struct {
 	pc     int32
 	regs   []st.Int32
-	mem    Memory
+	mem    *Memory
 	marked []Mark
 
 	cond z3.Bool
@@ -55,7 +54,7 @@ func (s *Status) ClearBranch() {
 
 // NewMachine returns a new machine, with the given initial memory and program
 // counter.
-func NewMachine(ctx *z3.Context, solver *z3.Solver, pc int32, mem Memory) *Machine {
+func NewMachine(ctx *z3.Context, solver *z3.Solver, pc int32, mem *Memory) *Machine {
 	regs := make([]st.Int32, 32)
 	for i := range regs {
 		regs[i] = st.Int32{C: 0}
@@ -84,15 +83,12 @@ func Restore(cp *Checkpoint, ctx *z3.Context, solver *z3.Solver) *Machine {
 
 func (m *Machine) Checkpoint(cond z3.Bool) *Checkpoint {
 	cpregs := make([]st.Int32, len(m.regs))
-	cpmem := make(Memory)
+	cpmem := NewMemory(m.mem)
 	cpmarked := make([]Mark, len(m.marked))
+	m.mem = NewMemory(m.mem)
 
 	copy(cpregs, m.regs)
 	copy(cpmarked, m.marked)
-
-	for k, v := range m.mem {
-		cpmem[k] = v
-	}
 
 	return &Checkpoint{
 		cond:   cond,
@@ -506,18 +502,10 @@ func (m *Machine) String() string {
 		buf.WriteByte('\n')
 	}
 
-	keys := make([]uint32, len(m.mem))
-	i := 0
-	for k := range m.mem {
-		keys[i] = k
-		i++
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
+	keys := m.mem.Keys()
 
 	for _, addr := range keys {
-		val := m.mem[addr]
+		val := m.mem.readz(addr)
 		buf.WriteString(fmt.Sprintf("0x%x: ", addr*4))
 		if val.IsConcrete() {
 			buf.WriteString(fmt.Sprintf("%d", val.C))
