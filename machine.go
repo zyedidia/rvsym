@@ -233,7 +233,7 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 		for i := int32(0); ; i++ {
 			b, ok := m.mem.Read8u(st.Uint32{C: uint32(nameptr.C + i)}, m.solver)
 			if !ok || !b.IsConcrete() {
-				m.Status.Err = fmt.Errorf("out of bounds name while marking bytes")
+				m.Status.Err = fmt.Errorf("out of bounds name while marking array")
 				return
 			}
 			if b.C == 0 {
@@ -425,13 +425,11 @@ func (m *Machine) load(insn uint32) {
 	}
 
 	if !valid {
-		var access uint32
 		if !addr.IsConcrete() {
-			access = addr.Eval(m.solver.Model())
+			m.Status.Err = fmt.Errorf("invalid memory access possible at symbolic memory address")
 		} else {
-			access = addr.C
+			m.Status.Err = fmt.Errorf("invalid memory access at 0x%x", addr.C)
 		}
-		m.Status.Err = fmt.Errorf("invalid memory access at 0x%x", access)
 		return
 	}
 
