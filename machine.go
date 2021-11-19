@@ -213,6 +213,39 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 		m.exit(ExitNormal)
 	case SymQuietExit:
 		m.exit(ExitQuiet)
+	case SymMarkArray:
+		ptr := m.regs[11]     // a1
+		nbytes := m.regs[12]  // a2
+		nameptr := m.regs[13] // a3
+		if !ptr.IsConcrete() {
+			m.Status.Err = fmt.Errorf("mark address is symbolic")
+			return
+		}
+		if !nbytes.IsConcrete() {
+			m.Status.Err = fmt.Errorf("mark size is symbolic")
+			return
+		}
+		if !nameptr.IsConcrete() {
+			m.Status.Err = fmt.Errorf("mark name address is symbolic")
+			return
+		}
+		nameb := &bytes.Buffer{}
+		for i := int32(0); ; i++ {
+			b, ok := m.mem.Read8u(st.Uint32{C: uint32(nameptr.C + i)}, m.solver)
+			if !ok || !b.IsConcrete() {
+				m.Status.Err = fmt.Errorf("out of bounds name while marking bytes")
+				return
+			}
+			if b.C == 0 {
+				break
+			}
+			nameb.WriteByte(byte(b.C))
+		}
+		name := nameb.String()
+
+		fmt.Printf("INFO: marking '%s' as an array: %d bytes at 0x%x\n", name, nbytes.C, ptr.C)
+
+		m.mem.AddArray(m.ctx, name, int(ptr.C/4), int((nbytes.C+3)/4))
 	case SymMarkNBytes:
 		ptr := m.regs[11]     // a1
 		nbytes := m.regs[12]  // a2
@@ -233,7 +266,7 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 
 		nameb := &bytes.Buffer{}
 		for i := int32(0); ; i++ {
-			b, ok := m.mem.Read8u(uint32(nameptr.C + i))
+			b, ok := m.mem.Read8u(st.Uint32{C: uint32(nameptr.C + i)}, m.solver)
 			if !ok || !b.IsConcrete() {
 				m.Status.Err = fmt.Errorf("out of bounds name while marking bytes")
 				return
@@ -245,20 +278,20 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 		}
 		name := nameb.String()
 
-		fmt.Printf("INFO: marking %d bytes at 0x%x\n", nbytes.C, ptr.C)
+		fmt.Printf("INFO: marking '%s': %d bytes at 0x%x\n", name, nbytes.C, ptr.C)
 
 		for i := int32(0); i < nbytes.C/4; i++ {
 			idx := i * 4
 			i32 := st.AnyInt32(m.ctx, fmt.Sprintf("0x%x", ptr.C+idx))
 			m.mark(i32, fmt.Sprintf("%s[%d:%d]", name, idx, idx+3))
-			m.mem.Write32(uint32(ptr.C+idx), i32)
+			m.mem.Write32(st.Uint32{C: uint32(ptr.C + idx)}, i32, m.solver)
 		}
 		left := nbytes.C % 4
 		for i := int32(0); i < left; i++ {
 			idx := nbytes.C - left + i
 			i32 := st.AnyInt32(m.ctx, fmt.Sprintf("0x%x", ptr.C+idx))
 			m.mark(i32, fmt.Sprintf("%s[%d]", name, idx))
-			m.mem.Write8(uint32(ptr.C+idx), i32)
+			m.mem.Write8(st.Uint32{C: uint32(ptr.C + idx)}, i32, m.solver)
 		}
 	case SymDump:
 		fmt.Print(m.String())
@@ -371,36 +404,34 @@ func (m *Machine) load(insn uint32) {
 	imm := extractImm(insn, ImmI)
 	funct3 := GetBits(insn, 14, 12).Uint32()
 
-	rsval := m.regs[rs1]
-	if !rsval.IsConcrete() {
-		if c, ok := m.concretize(rsval); ok {
-			rsval = st.Int32{C: c}
-		} else {
-			return
-		}
-	}
-	addr := uint32(int32(rsval.C) + int32(imm))
+	addr := m.regs[rs1].Add(st.Int32{C: int32(imm)}).ToUint32()
 
 	var rdval st.Int32
 	var valid bool
 	switch funct3 {
 	case ExtByte:
-		rdval, valid = m.mem.Read8(addr)
+		rdval, valid = m.mem.Read8(addr, m.solver)
 	case ExtHalf:
-		rdval, valid = m.mem.Read16(addr)
+		rdval, valid = m.mem.Read16(addr, m.solver)
 	case ExtWord:
-		rdval, valid = m.mem.Read32(addr)
+		rdval, valid = m.mem.Read32(addr, m.solver)
 	case ExtByteU:
-		rdval, valid = m.mem.Read8u(addr)
+		rdval, valid = m.mem.Read8u(addr, m.solver)
 	case ExtHalfU:
-		rdval, valid = m.mem.Read16u(addr)
+		rdval, valid = m.mem.Read16u(addr, m.solver)
 	default:
 		m.Status.Err = fmt.Errorf("invalid load instruction")
 		return
 	}
 
 	if !valid {
-		m.Status.Err = fmt.Errorf("invalid memory access at 0x%x", addr)
+		var access uint32
+		if !addr.IsConcrete() {
+			access = addr.Eval(m.solver.Model())
+		} else {
+			access = addr.C
+		}
+		m.Status.Err = fmt.Errorf("invalid memory access at 0x%x", access)
 		return
 	}
 
@@ -412,26 +443,17 @@ func (m *Machine) store(insn uint32) {
 	imm := extractImm(insn, ImmS)
 	funct3 := GetBits(insn, 14, 12).Uint32()
 
-	rsval := m.regs[rs1]
-	if !rsval.IsConcrete() {
-		if c, ok := m.concretize(rsval); !ok {
-			return
-		} else {
-			rsval = st.Int32{C: c}
-		}
-	}
-
-	addr := uint32(int32(rsval.C) + int32(imm))
+	addr := m.regs[rs1].Add(st.Int32{C: int32(imm)}).ToUint32()
 
 	stval := m.regs[rs2]
 
 	switch funct3 {
 	case ExtByte:
-		m.mem.Write8(addr, stval)
+		m.mem.Write8(addr, stval, m.solver)
 	case ExtHalf:
-		m.mem.Write16(addr, stval)
+		m.mem.Write16(addr, stval, m.solver)
 	case ExtWord:
-		m.mem.Write32(addr, stval)
+		m.mem.Write32(addr, stval, m.solver)
 	default:
 		m.Status.Err = fmt.Errorf("invalid store instruction")
 	}
@@ -505,7 +527,7 @@ func (m *Machine) String() string {
 	keys := m.mem.Keys()
 
 	for _, addr := range keys {
-		val := m.mem.readz(addr)
+		val := m.mem.readz(st.Uint32{C: addr}, m.solver)
 		buf.WriteString(fmt.Sprintf("0x%x: ", addr*4))
 		if val.IsConcrete() {
 			buf.WriteString(fmt.Sprintf("%d", val.C))

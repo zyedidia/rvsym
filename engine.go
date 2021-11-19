@@ -61,7 +61,7 @@ func NewEngine(insns []uint32) *Engine {
 	mem := NewMemory(nil)
 
 	for i, ins := range insns {
-		mem.Write32(uint32(i*4), st.Int32{C: int32(ins)})
+		mem.Write32(st.Uint32{C: uint32(i * 4)}, st.Int32{C: int32(ins)}, sol)
 	}
 
 	return &Engine{

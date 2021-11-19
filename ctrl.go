@@ -60,6 +60,7 @@ const (
 	SymQuietExit
 	SymMarkNBytes
 	SymDump
+	SymMarkArray
 )
 
 type ExitStatus byte

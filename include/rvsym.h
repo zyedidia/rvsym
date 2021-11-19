@@ -49,6 +49,10 @@ static inline void rvsym_dump() {
     symcall_0(RVSYM_DUMP);
 }
 
+static inline void rvsym_mark_array(volatile void* p, uint32_t nbytes, const char* name) {
+    symcall_3(RVSYM_MARK_ARRAY, (uintptr_t) p, nbytes, (uintptr_t) name);
+}
+
 #define rvsym_assume(x)          \
     do {                         \
         if (!(x))                \
