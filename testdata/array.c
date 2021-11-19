@@ -14,7 +14,7 @@ int main() {
     }
 
     if (array[addr] == 50) {
-        rvsym_fail();
+        rvsym_exit();
     }
     rvsym_quiet_exit();
     return 0;
