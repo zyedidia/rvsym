@@ -77,6 +77,7 @@ func NewEngine(insns []uint32) *Engine {
 }
 
 func (e *Engine) Step() bool {
+	e.Stats.Steps++
 	m := e.active
 
 	m.Exec(e.insns[m.pc/4])
@@ -85,7 +86,6 @@ func (e *Engine) Step() bool {
 	}
 
 	if e.HandleExit(m) {
-		return e.active != nil
 	} else if m.Status.HasBr {
 		br := m.Status.Br
 		if br.cond.IsConcrete() {
@@ -112,14 +112,12 @@ func (e *Engine) Step() bool {
 			m.AddCond(br.cond.S, true)
 		}
 
-		if e.HandleExit(m) {
-			return e.active != nil
+		if !e.HandleExit(m) {
+			m.Status.ClearBranch()
 		}
-		m.Status.ClearBranch()
 	} else {
 		m.pc += 4
 	}
-	e.Stats.Steps++
 
 	return e.active != nil
 }
@@ -152,7 +150,6 @@ func (e *Engine) HasExit(m *Machine) bool {
 			tc, err := m.TestCase()
 			if err != ErrUnsat {
 				e.paths = append(e.paths, tc)
-				fmt.Println("INFO: found failure")
 			} else {
 				m.Status.Exit = ExitUnsat
 			}

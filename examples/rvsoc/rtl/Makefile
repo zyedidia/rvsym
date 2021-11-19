@@ -37,7 +37,7 @@ rvsoc.hh: $(synth)
 	yosys -m $(YOSIM_SO) -q -p 'read_verilog $(SV_INC) $(DEFINE) -sv -noautowire $(synth); write_yosimcxx -g0 -O4 $@'
 
 %.o: %.cc %.hh
-	$(CXX) $(CXXFLAGS) -DCXXRTL_NDEBUG -DNDEBUG -I$(YOSIM_INCLUDE) -I$(YOSYS_INCLUDE) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -DRVSYM -DCXXRTL_NDEBUG -DNDEBUG -I$(YOSIM_INCLUDE) -I$(YOSYS_INCLUDE) -c $< -o $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
