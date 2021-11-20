@@ -17,7 +17,6 @@ import (
 )
 
 var summary = flag.Bool("summary", false, "provide a path exploration summary")
-var max = flag.Int("max", -1, "Maximum number of machines (-1 for unlimited)")
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 var hex = flag.Bool("hex", false, "print test cases in hex")
 
@@ -48,7 +47,6 @@ func main() {
 
 	code := rvsym.LoadCode(bin)
 	eng := rvsym.NewEngine(code)
-	eng.MaxMachines = *max
 
 	var dwarf io.ReaderAt
 	if len(args) > 1 {

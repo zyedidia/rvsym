@@ -43,8 +43,9 @@ type Engine struct {
 
 	paths []TestCase
 
-	Stats       Stats
-	MaxMachines int
+	Stats Stats
+
+	errs map[int32]bool
 
 	solver *z3.Solver
 	ctx    *z3.Context
@@ -65,11 +66,11 @@ func NewEngine(insns []uint32) *Engine {
 	}
 
 	return &Engine{
-		insns:       insns,
-		ctx:         ctx,
-		solver:      sol,
-		active:      NewMachine(ctx, sol, 0, mem),
-		MaxMachines: -1,
+		insns:  insns,
+		ctx:    ctx,
+		solver: sol,
+		active: NewMachine(ctx, sol, 0, mem),
+		errs:   make(map[int32]bool),
 		Stats: Stats{
 			Exits: make(map[ExitStatus]int),
 		},
@@ -81,9 +82,6 @@ func (e *Engine) Step() bool {
 	m := e.active
 
 	m.Exec(e.insns[m.pc/4])
-	if m.Status.Err != nil {
-		m.Status.Exit = ExitFail
-	}
 
 	if e.HandleExit(m) {
 	} else if m.Status.HasBr {
@@ -138,6 +136,15 @@ func (e *Engine) HandleExit(m *Machine) bool {
 
 func (e *Engine) HasExit(m *Machine) bool {
 	if m.Status.Exit != ExitNone {
+		if m.Status.Exit == ExitMem {
+			if !e.errs[m.pc] {
+				m.Status.Exit = ExitFail
+				e.errs[m.pc] = true
+			} else {
+				m.Status.Exit = ExitQuiet
+			}
+		}
+
 		switch m.Status.Exit {
 		case ExitNormal:
 			tc, err := m.TestCase()

@@ -70,6 +70,7 @@ const (
 	ExitNormal
 	ExitQuiet
 	ExitFail
+	ExitMem
 	ExitUnsat
 )
 
@@ -83,6 +84,8 @@ func (e ExitStatus) String() string {
 		return "failure"
 	case ExitUnsat:
 		return "unsat"
+	case ExitMem:
+		return "memory failure"
 	}
 	return "quiet"
 }

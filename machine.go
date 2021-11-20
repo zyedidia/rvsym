@@ -430,6 +430,7 @@ func (m *Machine) load(insn uint32) {
 		} else {
 			m.Status.Err = fmt.Errorf("invalid memory access at 0x%x", addr.C)
 		}
+		m.Status.Exit = ExitMem
 		return
 	}
 
