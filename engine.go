@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/zyedidia/go-z3/st"
-	"github.com/zyedidia/go-z3/z3"
+	"github.com/zyedidia/rvsym/pkg/z3/st"
+	"github.com/zyedidia/rvsym/pkg/z3/z3"
 )
 
 type Assignment struct {

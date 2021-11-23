@@ -1,7 +1,7 @@
 package rvsym
 
 import (
-	"github.com/zyedidia/go-z3/st"
+	"github.com/zyedidia/rvsym/pkg/z3/st"
 )
 
 func alu(a, b st.Int32, op uint32, sub, sharith, malu bool) st.Int32 {
