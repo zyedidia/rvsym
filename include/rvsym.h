@@ -53,8 +53,14 @@ static inline void rvsym_mark_array(volatile void* p, uint32_t nbytes, const cha
     symcall_3(RVSYM_MARK_ARRAY, (uintptr_t) p, nbytes, (uintptr_t) name);
 }
 
-#define rvsym_assume(x)          \
-    do {                         \
-        if (!(x))                \
+#define rvsym_assert(x)         \
+    do {                        \
+        if (!(x))               \
+            rvsym_fail();       \
+    } while (0)
+
+#define rvsym_assume(x)         \
+    do {                        \
+        if (!(x))               \
             rvsym_quiet_exit(); \
     } while (0)
