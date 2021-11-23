@@ -2,3 +2,5 @@ github.com/go-errors/errors v1.4.1 h1:IvVlgbzSsaUNudsw5dcXSzF3EWyXTi5XrAdngnuhRy
 github.com/go-errors/errors v1.4.1/go.mod h1:sIVyrIiJhuEF+Pj9Ebtd6P/rEYROXFi3BopGUQ5a5Og=
 github.com/zyedidia/go-z3 v0.0.0-20211119095551-e7bae696b11c h1:kYf/tg2JRw9eCWaOO7Re8imbr9ILNFb8RW9iJn9ksj4=
 github.com/zyedidia/go-z3 v0.0.0-20211119095551-e7bae696b11c/go.mod h1:VhVgcXc/joVO9DrZcCZOK8mfbs5zuEJ5w9luDMJ7CRU=
+github.com/zyedidia/go-z3 v0.0.0-20211123000839-a3d057dd0f08 h1:KZriqf1hMQycJCP2ERoBtGpi6qyODakcONMS7aIDpkk=
+github.com/zyedidia/go-z3 v0.0.0-20211123000839-a3d057dd0f08/go.mod h1:VhVgcXc/joVO9DrZcCZOK8mfbs5zuEJ5w9luDMJ7CRU=
