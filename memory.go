@@ -103,7 +103,7 @@ func (m *Memory) Write32(addr st.Uint32, val st.Int32, s *z3.Solver) bool {
 
 func (m *Memory) Write16(addr st.Uint32, val st.Int32, s *z3.Solver) bool {
 	wrb := addr.And(st.Uint32{C: 0b11})
-	val = val.ToInt16().ToInt32()
+	val = val.ToUint16().ToInt32()
 	wrb8 := wrb.Lsh(st.Uint64{C: 3}).ToUint64()
 	wrword := val.Lsh(wrb8)
 	wrmask := st.Uint32{C: uint32(0x0ffff)}.Lsh(wrb8).Not().ToInt32()
@@ -113,7 +113,7 @@ func (m *Memory) Write16(addr st.Uint32, val st.Int32, s *z3.Solver) bool {
 
 func (m *Memory) Write8(addr st.Uint32, val st.Int32, s *z3.Solver) bool {
 	wrb := addr.And(st.Uint32{C: 0b11})
-	val = val.ToInt8().ToInt32()
+	val = val.ToUint8().ToInt32()
 	wrb8 := wrb.Lsh(st.Uint64{C: 3}).ToUint64()
 	wrword := val.Lsh(wrb8)
 	wrmask := st.Uint32{C: uint32(0x0ff)}.Lsh(wrb8).Not().ToInt32()

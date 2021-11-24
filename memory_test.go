@@ -1,6 +1,7 @@
 package rvsym
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/zyedidia/rvsym/pkg/z3/st"
@@ -11,7 +12,7 @@ func TestMem(t *testing.T) {
 	mem.Write32(st.Uint32{C: 0}, st.Int32{C: 0x0A0B0C0D}, nil)
 
 	if v, ok := mem.Read8(st.Uint32{C: 0}, nil); !ok || v.C != 0xd {
-		t.Fatal("fail 0")
+		t.Fatalf("fail 0")
 	}
 	if v, ok := mem.Read8(st.Uint32{C: 1}, nil); !ok || v.C != 0xc {
 		t.Fatal("fail 1")
@@ -22,4 +23,8 @@ func TestMem(t *testing.T) {
 	if v, ok := mem.Read8(st.Uint32{C: 3}, nil); !ok || v.C != 0xa {
 		t.Fatal("fail 3")
 	}
+
+	mem.Write8(st.Uint32{C: 3}, st.Int32{C: 0xff}, nil)
+	v, _ := mem.Read8u(st.Uint32{C: 3}, nil)
+	fmt.Printf("%x\n", uint32(v.C))
 }

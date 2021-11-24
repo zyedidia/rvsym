@@ -198,15 +198,13 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 			m.regs[i+1] = st.AnyInt32(m.ctx, name)
 			m.mark(m.regs[i+1], name)
 		}
-	case SymSymbolicReg:
+	case SymPrint:
 		sysarg := m.regs[11] // a1
 		if !sysarg.IsConcrete() {
 			m.Status.Err = fmt.Errorf("required symcall argument is symbolic")
 			return
 		}
-		name := fmt.Sprintf("x%d", sysarg.C)
-		m.regs[sysarg.C] = st.AnyInt32(m.ctx, name)
-		m.mark(m.regs[sysarg.C], name)
+		fmt.Println(sysarg)
 	case SymFail:
 		m.exit(ExitFail)
 	case SymExit:

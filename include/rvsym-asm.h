@@ -10,10 +10,6 @@
 
 #define rvsym_fail() RVSYM_SYS(RVSYM_FAIL)
 
-#define rvsym_mark_reg_symbolic(r) \
-    li a1, r;                      \
-    RVSYM_SYS(RVSYM_SYMBOLIC_REG)
-
 #define rvsym_exit() RVSYM_SYS(RVSYM_EXIT)
 
 #define rvsym_dump() RVSYM_SYS(RVSYM_DUMP)

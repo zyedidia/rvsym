@@ -55,7 +55,7 @@ const (
 const (
 	SymSymbolicRegs = iota
 	SymFail
-	SymSymbolicReg
+	SymPrint
 	SymExit
 	SymQuietExit
 	SymMarkNBytes

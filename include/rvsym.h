@@ -37,8 +37,8 @@ static inline void rvsym_mark_regs_symbolic() {
     symcall_0(RVSYM_SYMBOLIC_REGS);
 }
 
-static inline void rvsym_mark_reg_symbolic(int reg) {
-    symcall_1(RVSYM_SYMBOLIC_REG, reg);
+static inline void rvsym_print(int val) {
+    symcall_1(RVSYM_PRINT, val);
 }
 
 static inline void rvsym_fail() {
