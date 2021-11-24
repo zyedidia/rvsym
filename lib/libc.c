@@ -11,10 +11,6 @@ int strcmp(const char* a, const char* b) {
     }
 }
 
-void free(void* ptr) {
-    return;
-}
-
 size_t strlen(const char* p) {
     size_t ret;
     for (ret = 0; p[ret]; ++ret)
