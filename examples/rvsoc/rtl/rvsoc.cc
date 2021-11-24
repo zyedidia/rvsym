@@ -18,7 +18,7 @@ int main() {
     soc.memory_p_ram__unit_2e_mem[0].set<uint32_t>(instr);
 
     // rvsym_assume(((instr >> 7) & 0x1f) == 0);
-    rvsym_assume((instr & 0b1111111) == 0b1100111);
+    rvsym_assume((instr & 0b1111111) == 0b0010011);
     // rvsym_assume(instr == 0x02a00093);
 
     soc.p_clk.set<bool>(false);
@@ -48,14 +48,10 @@ int main() {
 
     soc.step();
 
-    uint32_t pc = soc.p_cpu__unit_2e_fetch__unit_2e_pc__reg.get<uint32_t>();
-    rvsym_assert((pc & 0x1) == 0);
+    uint32_t x1 = soc.memory_p_cpu__unit_2e_decode__unit_2e_reg__file__unit_2e_regs[1].get<uint32_t>();
 
-    // uint32_t x1 = soc.memory_p_cpu__unit_2e_decode__unit_2e_reg__file__unit_2e_regs[1].get<uint32_t>();
-    //
-    // if (x1 == 42) {
-    //     rvsym_fail();
-    // }
+    rvsym_assert(x1 != 42);
+
     rvsym_quiet_exit();
     return 0;
 }
