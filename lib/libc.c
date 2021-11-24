@@ -1,5 +1,5 @@
 #include <stdint.h>
-#include <string.h>
+#include <stddef.h>
 
 int strcmp(const char* a, const char* b) {
     while (1) {
@@ -54,10 +54,6 @@ void* memmove(void* dst, const void* src, size_t count) {
 #define aligned4(ptr) aligned(ptr, 4)
 
 void* memcpy(void* dst, const void* src, size_t nbytes) {
-    // this is not for optimization.   when gcc copies structs it may
-    // call memcpy.   if the dst struct is a pointer to hw, and we
-    // do byte stores, i don't think this will necessarily lead to
-    // good behavior.
     if (aligned4(dst) && aligned4(src) && aligned4(nbytes)) {
         unsigned n = nbytes / 4;
         unsigned* d = dst;

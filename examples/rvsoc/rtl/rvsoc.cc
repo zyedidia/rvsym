@@ -1,4 +1,4 @@
-#include "rvsoc.hh"
+#include "rvsoc.cxx"
 #include "rvsym.h"
 
 int main() {

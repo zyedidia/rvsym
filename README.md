@@ -21,3 +21,9 @@ Then to build rvsym run
 ```
 go build ./cmd/rvsym
 ```
+
+# Usage
+
+To use the makefiles, making sure to set the environment variable `RVSYM_ROOT`
+to point to this directory. If you want to test the `rvsoc` example, also
+install Yosim and point `YOSIM_ROOT` to that directory.

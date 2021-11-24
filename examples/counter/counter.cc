@@ -4,7 +4,7 @@
 #include <backends/cxxrtl/cxxrtl.h>
 
 #include "rvsym.h"
-#include "counter.hh"
+#include "counter.cxx"
 
 uint32_t eval_one_cycle(cxxrtl_design::p_counter& counter, uint32_t current) {
     counter.p_q__reg.set<uint32_t>(current);
