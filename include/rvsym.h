@@ -21,6 +21,10 @@ static inline void symcall_3(int symno, uintptr_t arg0, uintptr_t arg1, uintptr_
     asm volatile("ecall" : "+r"(a0), "+r"(a1), "+r"(a2), "+r"(a3) : : "memory");
 }
 
+static inline void rvsym_mark_secret(volatile void* p, uint32_t nbytes, const char* name) {
+    symcall_3(RVSYM_MARK_NSECRET, (uintptr_t) p, nbytes, (uintptr_t) name);
+}
+
 static inline void rvsym_mark_bytes(volatile void* p, uint32_t nbytes, const char* name) {
     symcall_3(RVSYM_MARK_NBYTES, (uintptr_t) p, nbytes, (uintptr_t) name);
 }

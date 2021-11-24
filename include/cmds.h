@@ -7,3 +7,4 @@
 #define RVSYM_QUIET_EXIT 4
 #define RVSYM_MARK_NBYTES 5
 #define RVSYM_DUMP 6
+#define RVSYM_MARK_NSECRET 7

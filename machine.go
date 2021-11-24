@@ -21,12 +21,19 @@ type Machine struct {
 	Status Status
 
 	marked []Mark
+	secrets []Secret
 
 	stores []st.Int32
+	secretStores []st.Int32
 }
 
 type Mark struct {
 	val  st.Int32
+	name string
+}
+
+type Secret struct {
+	val st.Int32
 	name string
 }
 
@@ -68,10 +75,12 @@ func (m *Machine) Copy() *Machine {
 	conds := make([]z3.Bool, len(m.conds))
 	mem := make(map[uint32]st.Int32)
 	marked := make([]Mark, len(m.marked))
+	secrets := make([]Secret, len(m.secrets))
 
 	copy(regs, m.regs)
 	copy(conds, m.conds)
 	copy(marked, m.marked)
+	copy(secrets, m.secrets)
 
 	for k, v := range m.mem {
 		mem[k] = v
@@ -84,6 +93,7 @@ func (m *Machine) Copy() *Machine {
 		mem:    mem,
 		ctx:    m.ctx,
 		marked: marked,
+		secrets: secrets,
 	}
 }
 
@@ -181,7 +191,12 @@ func (m *Machine) mark(val st.Int32, name string) {
 	m.marked = append(m.marked, Mark{val, name})
 }
 
+func (m *Machine) secret(val st.Int32, name string) {
+	m.secrets = append(m.secrets, Secret{val, name})
+}
+
 func (m *Machine) symcall(insn uint32, sysnum int) {
+	fmt.Printf("sysnum: %d\n", sysnum)
 	switch sysnum {
 	case SymSymbolicRegs:
 		for i := range m.regs[1:] {
@@ -253,6 +268,60 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 		}
 	case SymDump:
 		fmt.Print(m.String())
+	case SymMarkNSecret:
+		fmt.Printf("Secret data marked\n")
+		ptr := m.regs[11]     // a1
+		nbytes := m.regs[12]  // a2
+		nameptr := m.regs[13] // a3
+
+		if !ptr.IsConcrete() {
+			m.Status.Err = fmt.Errorf("secret address is symbolic")
+			return
+		}
+		if !nbytes.IsConcrete() {
+			m.Status.Err = fmt.Errorf("secret size is symbolic")
+			return
+		}
+		if !nameptr.IsConcrete() {
+			m.Status.Err = fmt.Errorf("secret name address is symbolic")
+			return
+		}
+		nameb := &bytes.Buffer{}
+		for i := int32(0); ; i++ {
+			b, ok := m.mem.Read8u(uint32(nameptr.C + i))
+			if !ok || !b.IsConcrete() {
+				m.Status.Err = fmt.Errorf("out of bounds name while marking bytes")
+				return
+			}
+			if b.C == 0 {
+				break
+			}
+			nameb.WriteByte(byte(b.C))
+		}
+		name := nameb.String()
+
+		fmt.Printf("INFO: marking %d bytes %s secret at 0x%x\n", nbytes.C, name, ptr.C)
+		// TODO: Mark secret...
+		for i := int32(0); i < nbytes.C/4; i++ {
+			idx := i * 4
+			i32, _ := m.mem.Read32(uint32(ptr.C+idx))
+			i32.Secret = true
+			m.mem.Write32(uint32(ptr.C+idx), i32)
+
+			m.secret(i32, fmt.Sprintf("%s[%d:%d]", name, idx, idx+3))
+
+			if i32.IsConcrete() {
+				fmt.Printf("Secrete data: %d\n", i32.C)
+			}
+		}
+		left := nbytes.C % 4
+		for i := int32(0); i < left; i++ {
+			idx := nbytes.C - left + i
+			i32, _ := m.mem.Read8(uint32(ptr.C+idx))
+			i32.Secret = true
+			m.mem.Write8(uint32(ptr.C+idx), i32)
+			m.secret(i32, fmt.Sprintf("%s[%d]", name, idx))
+		}
 	}
 }
 
@@ -403,7 +472,10 @@ func (m *Machine) store(insn uint32) {
 	imm := extractImm(insn, ImmS)
 	funct3 := GetBits(insn, 14, 12).Uint32()
 
+	fmt.Printf("rs1: %d, rs2: %d\n", rs1, rs2);
+
 	rsval := m.regs[rs1]
+	stval := m.regs[rs2]
 
 	addrsym := rsval.Add(st.Int32{C: int32(imm)})
 	fmt.Print("INFO: store at ")
@@ -412,10 +484,40 @@ func (m *Machine) store(insn uint32) {
 	} else {
 		fmt.Printf("%v\n", addrsym.S)
 	}
+	if stval.Secret {
+		fmt.Printf("NOTE: rsval is secret!\n")
+	}
+	if stval.IsConcrete() {
+		fmt.Printf("Storing data: %d\n", stval.C)
+	} else {
+		fmt.Printf("Store is symbolic\n")
+	}
 
-	for i := len(m.stores) - 1; i >= 0; i-- {
-		a := m.stores[i]
+	loopLen := 0
+	if stval.Secret {
+		loopLen = len(m.stores)
+	} else if !stval.Secret && !stval.IsConcrete() { // Only do silent stores
+		loopLen = len(m.secretStores)	         // check if storing secret value, 
+	}					         // or if storing non-secret, 
+						         // symbolic value (aka attacker
+						         // controlled data)
+
+	//for i := len(m.stores) - 1; i >= 0; i-- {
+	//for i := len(m.secretStores) - 1; i >= 0; i-- {
+	for i := loopLen - 1; i >= 0; i-- {
+
+		var a st.Int32
+		if stval.Secret {
+			a = m.stores[i]
+		} else {
+			a = m.secretStores[i]
+		}
+
+		fmt.Printf("Checking secret addresses\n")
 		s := z3.NewSolver(m.ctx)
+
+		// mark addresses as "secret" on each store of secret data to them
+
 		for _, c := range m.conds {
 			s.Assert(c)
 		}
@@ -440,7 +542,14 @@ func (m *Machine) store(insn uint32) {
 		}
 	}
 
-	m.stores = append(m.stores, addrsym)
+	if stval.Secret { // secretStores and stores are disjoint
+			  // because we don't want secret overwriting
+			  // secret stores to be an error
+		addrsym.Secret = true
+		m.secretStores = append(m.secretStores, addrsym)
+	} else {
+		m.stores = append(m.stores, addrsym)
+	}
 
 	if !rsval.IsConcrete() {
 		if c, ok := m.concretize(rsval); !ok {
@@ -451,8 +560,6 @@ func (m *Machine) store(insn uint32) {
 	}
 
 	addr := uint32(int32(rsval.C) + int32(imm))
-
-	stval := m.regs[rs2]
 
 	switch funct3 {
 	case ExtByte:
