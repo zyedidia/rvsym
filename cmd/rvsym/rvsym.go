@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -19,6 +20,7 @@ import (
 var summary = flag.Bool("summary", false, "provide a path exploration summary")
 var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 var hex = flag.Bool("hex", false, "print test cases in hex")
+var forks = flag.Int("forks", math.MaxInt, "maximum number of forks")
 
 func main() {
 	flag.Parse()
@@ -46,7 +48,7 @@ func main() {
 	}
 
 	code := rvsym.LoadCode(bin)
-	eng := rvsym.NewEngine(code)
+	eng := rvsym.NewEngine(code, *forks)
 
 	var dwarf io.ReaderAt
 	if len(args) > 1 {

@@ -43,7 +43,8 @@ type Engine struct {
 
 	paths []TestCase
 
-	Stats Stats
+	Stats    Stats
+	MaxForks int
 
 	errs map[int32]bool
 
@@ -54,9 +55,10 @@ type Engine struct {
 type Stats struct {
 	Exits map[ExitStatus]int
 	Steps int
+	Forks int
 }
 
-func NewEngine(insns []uint32) *Engine {
+func NewEngine(insns []uint32, maxforks int) *Engine {
 	ctx := z3.NewContext(nil)
 	sol := z3.NewSolver(ctx)
 	mem := NewMemory(nil)
@@ -74,6 +76,7 @@ func NewEngine(insns []uint32) *Engine {
 		Stats: Stats{
 			Exits: make(map[ExitStatus]int),
 		},
+		MaxForks: maxforks,
 	}
 }
 
@@ -93,21 +96,32 @@ func (e *Engine) Step() bool {
 				m.pc += 4
 			}
 		} else {
-			nobr := br.cond.S.Not()
-
-			e.solver.Push()
-			e.solver.Assert(nobr)
-			sat, err := e.solver.Check()
-			e.solver.Pop()
-			if sat || err != nil {
-				checkpoint := m.Checkpoint(nobr)
-				checkpoint.pc += 4
-				e.checkpoints = append(e.checkpoints, checkpoint)
-				e.solver.Push()
+			var cond, alt z3.Bool
+			var condpc, altpc int32
+			if randbool() {
+				cond, alt = br.cond.S, br.cond.S.Not()
+				condpc, altpc = br.pc, m.pc+4
+			} else {
+				alt, cond = br.cond.S, br.cond.S.Not()
+				altpc, condpc = br.pc, m.pc+4
 			}
 
-			m.pc = br.pc
-			m.AddCond(br.cond.S, true)
+			if e.Stats.Forks < e.MaxForks {
+				e.solver.Push()
+				e.solver.Assert(alt)
+				sat, err := e.solver.Check()
+				e.solver.Pop()
+				if sat || err != nil {
+					checkpoint := m.Checkpoint(alt)
+					checkpoint.pc = altpc
+					e.checkpoints = append(e.checkpoints, checkpoint)
+					e.solver.Push()
+					e.Stats.Forks++
+				}
+			}
+
+			m.pc = condpc
+			m.AddCond(cond, true)
 		}
 
 		if !e.HandleExit(m) {
