@@ -310,8 +310,13 @@ func (m *Machine) rarith(insn uint32) {
 func (m *Machine) iarith(insn uint32) {
 	aluop := GetBits(insn, 14, 12).Uint32() // funct3
 	modify := GetBits(insn, 30, 30).Uint32() != 0
-	imm := st.Int32{C: int32(extractImm(insn, ImmI))}
-	rd, rs1, _ := extractRegs(insn)
+	rd, rs1, shamt := extractRegs(insn)
+	var imm st.Int32
+	if aluop == AluShr {
+		imm = st.Int32{C: int32(shamt)}
+	} else {
+		imm = st.Int32{C: int32(extractImm(insn, ImmI))}
+	}
 
 	m.WriteReg(rd, alu(m.regs[rs1], imm, aluop, false, modify, false))
 }
