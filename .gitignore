@@ -2,6 +2,7 @@
 *.list
 *.bin
 *.hh
+*.cxx
 *.elf
 rvsym
 !/cmd/rvsym

@@ -15,15 +15,16 @@ OBJDUMP=$(PREFIX)-objdump
 RVSYM_ROOT ?=
 RVSYM_LIB=$(RVSYM_ROOT)/lib
 RVSYM_INCLUDE=$(RVSYM_ROOT)/include
+INCLUDE=-I$(RVSYM_INCLUDE)
 
 O ?= 2
 
-CXXFLAGS=-O$(O) -I$(RVSYM_INCLUDE) -Wall -nostartfiles -ffreestanding -march=rv32im -mabi=ilp32 -std=c++14
-CFLAGS=-O$(O) -I$(RVSYM_INCLUDE) -Wall -nostartfiles -ffreestanding -march=rv32im -mabi=ilp32 -std=gnu99
+CXXFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=rv32im -mabi=ilp32 -std=c++14
+CFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=rv32im -mabi=ilp32 -std=gnu99
 ASFLAGS=-march=rv32im -mabi=ilp32
 LDFLAGS=-T $(RVSYM_LIB)/memmap.ld -melf32lriscv -L$(RV_ROOT)/$(PREFIX)/lib/rv32im/ilp32
 
-LIBOBJ=$(RVSYM_LIB)/start.o $(RVSYM_LIB)/libc.o
+LIBOBJ += $(RVSYM_LIB)/start.o $(RVSYM_LIB)/libc.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -35,7 +36,7 @@ LIBOBJ=$(RVSYM_LIB)/start.o $(RVSYM_LIB)/libc.o
 	$(LD) $(LDFLAGS) $(LIBOBJ) $< $(LDLIBS) -o $@
 
 %.bin: %.elf
-	$(OBJCOPY) $< -O binary $@
+	$(OBJCOPY) $< -O binary --set-section-flags .sbss=alloc,load,contents $@
 
 %.list: %.elf
 	$(OBJDUMP) -D $< > $@
