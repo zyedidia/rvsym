@@ -16,7 +16,7 @@ INC=-I../../include
 CXXFLAGS=$(INC) -O2 -g -Wall -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=c++14 -fpermissive
 CFLAGS=-O2 -g -Wall -Werror -nostdlib -nostartfiles -ffreestanding -march=rv32i -mabi=ilp32 -std=gnu99
 ASFLAGS=-g -march=rv32i -mabi=ilp32
-LDFLAGS=-T memmap.ld -melf32lriscv -L/opt/riscv/riscv64-unknown-elf/lib/rv32i/ilp32
+LDFLAGS=-T memmap.ld -melf32lriscv -L/opt/riscv/riscv64-unknown-elf/lib/rv32i/ilp32 -L/opt/riscv/lib/gcc/riscv64-unknown-elf/11.1.0/rv32i/ilp32
 
 LIBOBJ=lib/start.o lib/libc.o
 
@@ -42,7 +42,7 @@ pico.hh: $(synth)
 	cpp $(INC) $< | $(AS) $(ASFLAGS) -c -o $@
 
 %.elf: %.o $(LIBOBJ)
-	$(LD) $(LDFLAGS) $(LIBOBJ) $< -lstdc++ -o $@
+	$(LD) $(LDFLAGS) $(LIBOBJ) $< -lstdc++ -lgcc -o $@
 
 %.bin: %.elf
 	$(OBJCOPY) $< -O binary $@
