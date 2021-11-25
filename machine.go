@@ -241,7 +241,7 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 		}
 		name := nameb.String()
 
-		fmt.Printf("INFO: marking '%s' as an array: %d bytes at 0x%x\n", name, nbytes.C, ptr.C)
+		fmt.Printf("INFO: marked array '%s': %d bytes at 0x%x\n", name, nbytes.C, ptr.C)
 
 		m.mem.AddArray(m.ctx, name, int(ptr.C/4), int((nbytes.C+3)/4))
 	case SymMarkNBytes:
@@ -276,7 +276,7 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 		}
 		name := nameb.String()
 
-		fmt.Printf("INFO: marking '%s': %d bytes at 0x%x\n", name, nbytes.C, ptr.C)
+		fmt.Printf("INFO: marked '%s': %d bytes at 0x%x\n", name, nbytes.C, ptr.C)
 
 		for i := int32(0); i < nbytes.C/4; i++ {
 			idx := i * 4

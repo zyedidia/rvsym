@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "rvsym.h"
+
 int strcmp(const char* a, const char* b) {
     while (1) {
         unsigned char ac = *a, bc = *b;
@@ -64,4 +66,22 @@ void* memcpy(void* dst, const void* src, size_t nbytes) {
             d[i] = s[i];
     }
     return dst;
+}
+
+void abort() {
+    rvsym_fail();
+}
+
+extern char __heap_start__;
+char* heap_free = &__heap_start__;
+
+void* malloc(size_t size) {
+    void* alloc = (void*) heap_free;
+    size_t aligned_size = size - (size % 4) + 4;
+    heap_free += aligned_size;
+    return alloc;
+}
+
+void free(void* ptr) {
+    (void) ptr;
 }
