@@ -130,16 +130,19 @@ func (s SolverErr) Error() string {
 	return "solver error: unsatisfiable formula"
 }
 
-// Generate a solver
-func (m *Machine) Solver() (*z3.Solver, error) {
-	s := m.solver
+func check(s *z3.Solver) error {
 	sat, err := s.Check()
 	if err != nil {
-		return nil, err
+		return err
 	} else if !sat {
-		return nil, ErrUnsat
+		return ErrUnsat
 	}
-	return s, nil
+	return nil
+}
+
+// Generate a solver
+func (m *Machine) Solver() (*z3.Solver, error) {
+	return m.solver, check(m.solver)
 }
 
 // Branch: jumps to PC if cond is true.
@@ -468,20 +471,30 @@ func extractRegs(insn uint32) (rd, rs1, rs2 uint32) {
 	return rd, rs1, rs2
 }
 
-func (m *Machine) concretize(val st.Int32) (int32, bool) {
+func concretize(val st.Int32, s *z3.Solver) (int32, error) {
 	if val.IsConcrete() {
-		return val.C, true
+		return val.C, nil
 	}
 
-	s, err := m.Solver()
+	err := check(s)
+	if err != nil {
+		return 0, err
+	}
+	model := s.Model()
+	concrete := val.Eval(model)
+	s.Assert(val.Eq(st.Int32{C: concrete}).S)
+	fmt.Printf("INFO: concretizing value -> %d\n", concrete)
+	return concrete, nil
+}
+
+func (m *Machine) concretize(val st.Int32) (int32, bool) {
+	concrete, err := concretize(val, m.solver)
 	if err == ErrUnsat {
 		m.exit(ExitUnsat)
 	} else if err != nil {
 		m.Status.Err = err
+		m.exit(ExitFail)
 	} else {
-		model := s.Model()
-		concrete := val.Eval(model)
-		m.AddCond(val.Eq(st.Int32{C: concrete}).S, false)
 		return concrete, true
 	}
 	return 0, false

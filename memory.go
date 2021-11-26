@@ -66,9 +66,13 @@ func (m *Memory) read(idx st.Uint32, s *z3.Solver) (st.Int32, bool) {
 			return a.Read(idx, s), true
 		}
 	}
-	// not found in any symbolic array
+	// not found in any symbolic array -- concretize
 	if !idx.IsConcrete() {
-		return st.Int32{}, false
+		concrete, err := concretize(idx.ToInt32(), s)
+		if err != nil {
+			return st.Int32{}, false
+		}
+		idx = st.Uint32{C: uint32(concrete)}
 	}
 	if v, ok := m.mem[idx.C]; ok {
 		return v, true
@@ -92,9 +96,13 @@ func (m *Memory) write(idx st.Uint32, val st.Int32, s *z3.Solver) bool {
 			return true
 		}
 	}
-	// not found in any symbolic memory
+	// not found in any symbolic array -- concretize
 	if !idx.IsConcrete() {
-		return false
+		concrete, err := concretize(idx.ToInt32(), s)
+		if err != nil {
+			return false
+		}
+		idx = st.Uint32{C: uint32(concrete)}
 	}
 	m.mem[idx.C] = val
 	return true
