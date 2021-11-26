@@ -62,10 +62,11 @@ func (m *Memory) read(idx st.Uint32, s *z3.Solver) (st.Int32, bool) {
 		return st.Int32{}, false
 	}
 	for _, a := range m.arrs {
-		if v, ok := a.Read(idx, s); ok {
-			return v, true
+		if a.InBounds(idx, s) {
+			return a.Read(idx, s), true
 		}
 	}
+	// not found in any symbolic array
 	if !idx.IsConcrete() {
 		return st.Int32{}, false
 	}
@@ -86,10 +87,12 @@ func (m *Memory) readz(idx st.Uint32, s *z3.Solver) st.Int32 {
 
 func (m *Memory) write(idx st.Uint32, val st.Int32, s *z3.Solver) bool {
 	for i := range m.arrs {
-		if m.arrs[i].Write(idx, val, s) {
+		if m.arrs[i].InBounds(idx, s) {
+			m.arrs[i].Write(idx, val, s)
 			return true
 		}
 	}
+	// not found in any symbolic memory
 	if !idx.IsConcrete() {
 		return false
 	}
