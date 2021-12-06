@@ -12,7 +12,7 @@ func NewSolver() *Solver {
 func (s *Solver) Push()         {}
 func (s *Solver) Pop()          {}
 func (s *Solver) Assert(b Bool) {}
-func (s *Solver) Check() CheckResult {
+func (s *Solver) Check(model bool) CheckResult {
 	return Unknown
 }
 func (s *Solver) Model() Model {

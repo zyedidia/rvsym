@@ -58,7 +58,7 @@ func (s *Solver) Assert(b Bool) {
 	s.solver.Assert(b.Sym(s).Bool)
 }
 
-func (s *Solver) Check() CheckResult {
+func (s *Solver) Check(model bool) CheckResult {
 	sat, err := s.solver.Check()
 	if sat && err == nil {
 		return Sat

@@ -313,7 +313,7 @@ func (a ArrayInt32) InBounds(idx Int32, s *Solver) bool {
 	s.Push()
 	s.Assert(Bool{S: idx.S.Ugeb(s.ToSymInt32(int32(a.base)), s)})
 	s.Assert(Bool{S: idx.S.Ultb(s.ToSymInt32(int32(a.base+a.length)), s)})
-	res := s.Check()
+	res := s.Check(false)
 	s.Pop()
 	return res == Sat
 }

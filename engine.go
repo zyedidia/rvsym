@@ -71,7 +71,7 @@ func (e *Engine) Step() bool {
 
 		e.smt.Push()
 		e.smt.Assert(alt)
-		res := e.smt.Check()
+		res := e.smt.Check(false)
 		e.smt.Pop()
 		if res == smt.Sat {
 			checkpoint := m.Checkpoint(alt)

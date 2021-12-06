@@ -390,7 +390,7 @@ func (m *Machine) AddCond(cond smt.Bool, checksat bool, s *smt.Solver) {
 	s.Assert(cond)
 
 	if checksat {
-		res := s.Check()
+		res := s.Check(false)
 		if res == smt.Unsat {
 			m.exit(ExitUnsat)
 		} else if res == smt.Unknown {
@@ -400,7 +400,7 @@ func (m *Machine) AddCond(cond smt.Bool, checksat bool, s *smt.Solver) {
 }
 
 func (m *Machine) TestCase(s *smt.Solver) (TestCase, bool) {
-	res := s.Check()
+	res := s.Check(true)
 	if res != smt.Sat {
 		return TestCase{}, false
 	}

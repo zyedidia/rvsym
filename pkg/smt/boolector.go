@@ -6,7 +6,7 @@ package smt
 //#cgo LDFLAGS: -L./deps/lib -lboolector -llgl -lbtor2parser -lm
 //#include <stdlib.h>
 //#include "boolector.h"
-// int32_t boolector_multi_assert(Btor* btor, BoolectorNode** bools, int nbools) {
+// int32_t boolector_multi_assert(Btor* btor, BoolectorNode** bools, int nbools, bool model) {
 // 	for (int i = 0; i < nbools; i++) {
 // 		if (!bools[i]) {
 // 			boolector_push(btor, 1);
@@ -14,6 +14,7 @@ package smt
 // 			boolector_assert(btor, bools[i]);
 // 		}
 // 	}
+//  boolector_set_opt(btor, BTOR_OPT_MODEL_GEN, model);
 // 	int32_t res = boolector_sat(btor);
 // 	return res;
 // }
@@ -55,7 +56,6 @@ func initSorts(btor *C.Btor) sorts {
 
 func NewSolver() *Solver {
 	btor := C.boolector_new()
-	C.boolector_set_opt(btor, C.BTOR_OPT_MODEL_GEN, 1)
 	C.boolector_set_opt(btor, C.BTOR_OPT_OUTPUT_NUMBER_FORMAT, C.BTOR_OUTPUT_BASE_DEC)
 	C.boolector_set_opt(btor, C.BTOR_OPT_INCREMENTAL, 1)
 
@@ -77,11 +77,14 @@ func (s *Solver) Assert(b Bool) {
 	s.asserts = append(s.asserts, b.Sym(s).BV)
 }
 
-func (s *Solver) Check() CheckResult {
+func (s *Solver) Check(model bool) CheckResult {
+	var ptr **C.BoolectorNode
 	if len(s.asserts) == 0 {
-		return Sat
+		ptr = nil
+	} else {
+		ptr = &s.asserts[0]
 	}
-	result := C.boolector_multi_assert(s.btor, &s.asserts[0], C.int(len(s.asserts)))
+	result := C.boolector_multi_assert(s.btor, ptr, C.int(len(s.asserts)), C.bool(model))
 	s.asserts = nil
 	switch result {
 	case C.BOOLECTOR_SAT:
