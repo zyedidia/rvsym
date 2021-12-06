@@ -3,12 +3,14 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"runtime/pprof"
 	"strings"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/zyedidia/rvsym"
+	"github.com/zyedidia/rvsym/addr2line"
 )
 
 func fatal(a ...interface{}) {
@@ -70,20 +72,35 @@ func main() {
 
 	eng := rvsym.NewEngine(segs, entry)
 
+	converter := &addr2line.Converter{
+		Elf: opts.Elf,
+	}
+
+	showtc := func(eng *rvsym.Engine, last int) int {
+		if eng.NumTestCases() != last {
+			last = eng.NumTestCases()
+			tc := eng.TestCases()[last-1]
+
+			str := fmt.Sprintf("0x%x", uint32(tc.Pc))
+			if opts.Elf != "" {
+				pos, err := converter.Lookup(uint32(tc.Pc))
+				if err != nil {
+					log.Println(err)
+				} else {
+					str = pos.String()
+				}
+			}
+
+			fmt.Printf("--- Test case %d: %v at %s ---\n", last-1, tc.Exit, str)
+			fmt.Print(tc.String(true))
+			fmt.Println("---")
+		}
+		return last
+	}
+
 	var last int
 	for eng.Step() {
 		last = showtc(eng, last)
 	}
 	showtc(eng, last)
-}
-
-func showtc(eng *rvsym.Engine, last int) int {
-	if eng.NumTestCases() != last {
-		last = eng.NumTestCases()
-		tc := eng.TestCases()[last-1]
-		fmt.Printf("--- Test case %d: %v at 0x%x ---\n", last-1, tc.Exit, uint64(tc.Pc))
-		fmt.Print(tc.String(true))
-		fmt.Println("---")
-	}
-	return last
 }
