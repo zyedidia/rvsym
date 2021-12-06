@@ -4,5 +4,5 @@ use constraints for array for z3 (why is z3 slow with .Sym?)
 concretize jalr and some memory accesses
 array access annotation?
 release resources in boolector
-better ctrl-c support
-summaries
+better ctrl-c support [x]
+summaries [x]

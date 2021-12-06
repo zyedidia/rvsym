@@ -1,6 +1,9 @@
 package rvsym
 
 import (
+	"bytes"
+	"fmt"
+
 	"github.com/zyedidia/rvsym/pkg/smt"
 )
 
@@ -10,6 +13,14 @@ type Engine struct {
 	smt         *smt.Solver
 
 	tcs []TestCase
+
+	Stats Stats
+}
+
+type Stats struct {
+	Exits map[ExitStatus]int
+	Steps int
+	Forks int
 }
 
 func NewEngine(segs []Segment, entrypc uint32) *Engine {
@@ -28,10 +39,14 @@ func NewEngine(segs []Segment, entrypc uint32) *Engine {
 	return &Engine{
 		active: machine,
 		smt:    s,
+		Stats: Stats{
+			Exits: make(map[ExitStatus]int),
+		},
 	}
 }
 
 func (e *Engine) Step() bool {
+	e.Stats.Steps++
 	m := e.active
 
 	m.Exec(e.smt)
@@ -90,6 +105,7 @@ func (e *Engine) HandleExit(m *Machine) bool {
 	} else {
 		e.active = nil
 	}
+	e.Stats.Exits[m.Status.Exit]++
 
 	return true
 }
@@ -117,4 +133,21 @@ func (e *Engine) TestCases() []TestCase {
 
 func (e *Engine) NumTestCases() int {
 	return len(e.tcs)
+}
+
+func (e *Engine) Summary() string {
+	buf := &bytes.Buffer{}
+	paths := 0
+	for _, v := range e.Stats.Exits {
+		paths += v
+	}
+	fmt.Fprintln(buf, "--- Summary ---")
+	fmt.Fprintf(buf, "Instructions executed: %d\n", e.Stats.Steps)
+	fmt.Fprintf(buf, "Total paths: %d\n", paths)
+	fmt.Fprintf(buf, "Quiet exits: %d\n", e.Stats.Exits[ExitQuiet])
+	fmt.Fprintf(buf, "Unsat exits: %d\n", e.Stats.Exits[ExitUnsat])
+	fmt.Fprintf(buf, "Normal exits: %d\n", e.Stats.Exits[ExitNormal])
+	fmt.Fprintf(buf, "Failures: %d\n", e.Stats.Exits[ExitFail])
+	fmt.Fprintln(buf, "---")
+	return buf.String()
 }

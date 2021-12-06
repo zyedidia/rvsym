@@ -5,9 +5,12 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"runtime/pprof"
 	"strings"
+	"time"
 
+	"github.com/go-errors/errors"
 	"github.com/jessevdk/go-flags"
 	"github.com/zyedidia/rvsym"
 	"github.com/zyedidia/rvsym/addr2line"
@@ -26,7 +29,7 @@ func must(desc string, err error) {
 
 func main() {
 	flagparser := flags.NewParser(&opts, flags.PassDoubleDash|flags.PrintErrors)
-	flagparser.Usage = "[OPTIONS] BINFILE"
+	flagparser.Usage = "[OPTIONS] BIN/HEX"
 	args, err := flagparser.Parse()
 	if err != nil {
 		fatal(err)
@@ -98,9 +101,51 @@ func main() {
 		return last
 	}
 
+	showSummary := func(eng *rvsym.Engine) {
+		if opts.Summary {
+			fmt.Print(eng.Summary())
+		}
+	}
+
+	defer func() {
+		if err := recover(); err != nil {
+			showSummary(eng)
+			fmt.Printf("%s\n%v\n", "a fatal error occurred", errors.Wrap(err, 2).ErrorStack())
+			os.Exit(1)
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			showSummary(eng)
+			os.Exit(0)
+		}
+	}()
+
+	var timer *time.Timer
+	if opts.Time != nil {
+		timeout := time.Second * time.Duration(*opts.Time)
+		timer = time.NewTimer(timeout)
+	} else {
+		timer = time.NewTimer(0)
+		timer.Stop()
+	}
+
 	var last int
+
+loop:
 	for eng.Step() {
-		last = showtc(eng, last)
+		select {
+		case <-timer.C:
+			log.Println("Execution timed out")
+			break loop
+		default:
+			last = showtc(eng, last)
+		}
 	}
 	showtc(eng, last)
+
+	showSummary(eng)
 }
