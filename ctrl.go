@@ -1,5 +1,18 @@
 package rvsym
 
+import "github.com/zyedidia/rvsym/bits"
+
+type ExitStatus byte
+
+const (
+	ExitNone = iota
+	ExitNormal
+	ExitQuiet
+	ExitFail
+	ExitMem
+	ExitUnsat
+)
+
 // control code definitions
 
 const (
@@ -17,39 +30,11 @@ const (
 )
 
 const (
-	InsnEcall  = 0x00000073
-	InsnEbreak = 0x00100073
-	InsnNop    = 0x00000013
-)
-
-const (
-	AluAdd  = 0b000
-	AluShl  = 0b001
-	AluSlt  = 0b010
-	AluSltu = 0b011
-	AluXor  = 0b100
-	AluShr  = 0b101
-	AluOr   = 0b110
-	AluAnd  = 0b111
-
-	MAluMul    = 0b000
-	MAluMulH   = 0b001
-	MAluMulHSU = 0b010
-	MAluMulHU  = 0b011
-	MAluDiv    = 0b100
-	MAluDivU   = 0b101
-	MAluRem    = 0b110
-	MAluRemU   = 0b111
-)
-
-type ImmType byte
-
-const (
-	ImmI ImmType = iota
-	ImmS
-	ImmB
-	ImmJ
-	ImmU
+	ExtByte  = 0b000
+	ExtHalf  = 0b001
+	ExtWord  = 0b010
+	ExtByteU = 0b100
+	ExtHalfU = 0b101
 )
 
 const (
@@ -58,42 +43,32 @@ const (
 	SymPrint
 	SymExit
 	SymQuietExit
-	SymMarkNBytes
+	SymMarkBytes
 	SymDump
 	SymMarkArray
 )
 
-type ExitStatus byte
-
 const (
-	ExitNone = iota
-	ExitNormal
-	ExitQuiet
-	ExitFail
-	ExitMem
-	ExitUnsat
+	InsnEcall  = 0x00000073
+	InsnEbreak = 0x00100073
+	InsnNop    = 0x00000013
 )
 
-func (e ExitStatus) String() string {
-	switch e {
-	case ExitNone:
-		return "no exit"
-	case ExitNormal:
-		return "exit"
-	case ExitFail:
-		return "failure"
-	case ExitUnsat:
-		return "unsat"
-	case ExitMem:
-		return "memory failure"
-	}
-	return "quiet"
+func rd(insn uint32) uint32 {
+	return bits.Get(insn, 11, 7)
 }
-
-const (
-	ExtByte  = 0b000
-	ExtHalf  = 0b001
-	ExtWord  = 0b010
-	ExtByteU = 0b100
-	ExtHalfU = 0b101
-)
+func rs1(insn uint32) uint32 {
+	return bits.Get(insn, 19, 15)
+}
+func rs2(insn uint32) uint32 {
+	return bits.Get(insn, 24, 20)
+}
+func shamt(insn uint32) uint32 {
+	return bits.Get(insn, 24, 20)
+}
+func funct3(insn uint32) uint32 {
+	return bits.Get(insn, 14, 12)
+}
+func funct7(insn uint32) uint32 {
+	return bits.Get(insn, 31, 25)
+}

@@ -24,7 +24,7 @@ CFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=
 ASFLAGS=-march=rv32im -mabi=ilp32
 LDFLAGS=-T $(RVSYM_LIB)/memmap.ld -melf32lriscv -L$(RV_ROOT)/$(PREFIX)/lib/rv32im/ilp32
 
-LIBOBJ += $(RVSYM_LIB)/start.o $(RVSYM_LIB)/libc.o
+LIBOBJ += $(RVSYM_LIB)/start.o $(RVSYM_LIB)/libc.o $(RVSYM_LIB)/cstart.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -36,7 +36,7 @@ LIBOBJ += $(RVSYM_LIB)/start.o $(RVSYM_LIB)/libc.o
 	$(LD) $(LDFLAGS) $(LIBOBJ) $< $(LDLIBS) -o $@
 
 %.bin: %.elf
-	$(OBJCOPY) $< -O binary --set-section-flags .sbss=alloc,load,contents $@
+	$(OBJCOPY) $< -S -O binary $@
 
 %.list: %.elf
 	$(OBJDUMP) -D $< > $@

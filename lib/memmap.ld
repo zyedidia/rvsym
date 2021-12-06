@@ -1,6 +1,9 @@
-SECTIONS
-{
-    .text 0x0000 : {
+OUTPUT_ARCH("riscv")
+
+ENTRY(_start)
+
+SECTIONS {
+    .text 0x1000 : {
         __code_start__ = .;
         KEEP(*(.text.boot))
         *(.text*)

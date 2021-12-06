@@ -1,94 +1,68 @@
 package rvsym
 
-import (
-	"github.com/zyedidia/rvsym/pkg/z3/st"
+import "github.com/zyedidia/rvsym/pkg/smt"
+
+type AluOp int
+
+const (
+	AluAdd    = 0b0000000000
+	AluSub    = 0b0100000000
+	AluSlt    = 0b0000000010
+	AluSltu   = 0b0000000011
+	AluXor    = 0b0000000100
+	AluSll    = 0b0000000001
+	AluSrl    = 0b0000000101
+	AluSra    = 0b0100000101
+	AluOr     = 0b0000000110
+	AluAnd    = 0b0000000111
+	AluMul    = 0b0000001000
+	AluMulH   = 0b0000001001
+	AluMulHSU = 0b0000001010
+	AluMulHU  = 0b0000001011
+	AluDiv    = 0b0000001100
+	AluDivU   = 0b0000001101
+	AluRem    = 0b0000001110
+	AluRemU   = 0b0000001111
 )
 
-func alu(a, b st.Int32, op uint32, sub, sharith, malu bool) st.Int32 {
-	if malu {
-		switch op {
-		case MAluMul:
-			return a.Mul(b)
-		case MAluMulH:
-			return a.ToInt64().Mul(b.ToInt64()).Upper32()
-		case MAluMulHSU:
-			return a.ToInt64().ToUint64().Mul(b.ToUint32().ToUint64()).Upper32()
-		case MAluMulHU:
-			return a.ToUint32().ToUint64().Mul(b.ToUint32().ToUint64()).Upper32()
-		case MAluDiv:
-			return a.Quo(b)
-		case MAluDivU:
-			return a.ToUint32().Quo(b.ToUint32()).ToInt32()
-		case MAluRem:
-			return a.Rem(b)
-		case MAluRemU:
-			return a.ToUint32().Rem(b.ToUint32()).ToInt32()
-		}
-	}
-
+func (m *Machine) alu(a, b smt.Int32, op AluOp, s *smt.Solver) smt.Int32 {
 	switch op {
 	case AluAdd:
-		if sub {
-			return a.Sub(b)
-		} else {
-			return a.Add(b)
-		}
-	case AluShl:
-		return a.Lsh(b.ToUint64())
+		return a.Add(b, s)
+	case AluSub:
+		return a.Sub(b, s)
 	case AluSlt:
-		return a.LT(b).ToInt32()
+		return a.Slt(b, s)
 	case AluSltu:
-		return a.ToUint32().LT(b.ToUint32()).ToInt32()
+		return a.Ult(b, s)
 	case AluXor:
-		return a.Xor(b)
-	case AluShr:
-		if sharith {
-			return a.Rsh(b.ToUint64())
-		} else {
-			return a.ToUint32().Rsh(b.ToUint64()).ToInt32()
-		}
+		return a.Xor(b, s)
+	case AluSll:
+		return a.Sll(b, s)
+	case AluSrl:
+		return a.Srl(b, s)
+	case AluSra:
+		return a.Sra(b, s)
 	case AluOr:
-		return a.Or(b)
+		return a.Or(b, s)
 	case AluAnd:
-		return a.And(b)
+		return a.And(b, s)
+	case AluMul:
+		return a.Mul(b, s)
+	case AluMulH:
+		return a.ToInt64s(s).Mul(b.ToInt64s(s), s).Upper32(s)
+	case AluMulHSU:
+		return a.ToInt64s(s).Mul(b.ToInt64z(s), s).Upper32(s)
+	case AluMulHU:
+		return a.ToInt64z(s).Mul(b.ToInt64z(s), s).Upper32(s)
+	case AluDiv:
+		return a.Div(b, s)
+	case AluDivU:
+		return a.Divu(b, s)
+	case AluRem:
+		return a.Rem(b, s)
+	case AluRemU:
+		return a.Remu(b, s)
 	}
-	panic("unreachable")
-}
-
-func extractImm(insn uint32, typ ImmType) uint32 {
-	switch typ {
-	case ImmI:
-		return CatBits(
-			RepeatBit(insn, 31, 20),
-			GetBits(insn, 31, 20),
-		).Uint32()
-	case ImmS:
-		return CatBits(
-			RepeatBit(insn, 31, 20),
-			GetBits(insn, 31, 25),
-			GetBits(insn, 11, 7),
-		).Uint32()
-	case ImmB:
-		return CatBits(
-			RepeatBit(insn, 31, 20),
-			GetBits(insn, 7, 7),
-			GetBits(insn, 30, 25),
-			GetBits(insn, 11, 8),
-			Bits{0, 1},
-		).Uint32()
-	case ImmJ:
-		return CatBits(
-			RepeatBit(insn, 31, 12),
-			GetBits(insn, 19, 12),
-			GetBits(insn, 20, 20),
-			GetBits(insn, 30, 21),
-			Bits{0, 1},
-		).Uint32()
-	case ImmU:
-		return CatBits(
-			GetBits(insn, 31, 12),
-			Bits{0, 12},
-		).Uint32()
-	}
-	return 0
+	panic("invalid alu op")
 }

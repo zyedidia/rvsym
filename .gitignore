@@ -9,3 +9,7 @@ rvsym
 a.out
 prof.out
 out.txt
+/main
+/pkg/smt/boolector
+/pkg/smt/bitwuzla
+/pkg/smt/deps

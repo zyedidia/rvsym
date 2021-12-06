@@ -1,6 +1,0 @@
-[submodule "tools/--force"]
-	path = tools/--force
-	url = https://github.com/zyedidia/rvasm
-[submodule "tools/rvasm"]
-	path = tools/rvasm
-	url = https://github.com/zyedidia/rvasm

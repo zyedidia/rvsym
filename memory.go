@@ -3,36 +3,47 @@ package rvsym
 import (
 	"sort"
 
-	"github.com/zyedidia/rvsym/pkg/z3/st"
-	"github.com/zyedidia/rvsym/pkg/z3/z3"
+	"github.com/zyedidia/rvsym/pkg/smt"
 )
 
+// A Memory represents the address space of the symbolic process. It tracks a
+// concrete memory space as a map of concrete addresses to concolic values. It
+// also tracks regions of memory which can be indexed with fully symbolic
+// addresses. These regions of the address space must be registered ahead of
+// time, and during reads/writes can also be bounds checked if desired.
 type Memory struct {
 	rdmem *Memory
-	mem   map[uint32]st.Int32
-	arrs  []st.ArrayInt32
+	mem   map[int32]smt.Int32
+	arrs  []smt.ArrayInt32
 }
 
+// NewMemory creates a new memory. The rdmem argument provides an existing
+// address space that can contain pre-populated values that will only be read
+// by this memory. This avoids unnecessarily copying data that will only ever
+// be read when copying an address space.
 func NewMemory(rdmem *Memory) *Memory {
-	var arrs []st.ArrayInt32
+	var arrs []smt.ArrayInt32
 	if rdmem != nil {
-		arrs = make([]st.ArrayInt32, len(rdmem.arrs))
+		arrs = make([]smt.ArrayInt32, len(rdmem.arrs))
 		copy(arrs, rdmem.arrs)
 	}
 	return &Memory{
 		rdmem: rdmem,
-		mem:   make(map[uint32]st.Int32),
+		mem:   make(map[int32]smt.Int32),
 		arrs:  arrs,
 	}
 }
 
-func (m *Memory) AddArray(ctx *z3.Context, name string, base int, length int) {
-	m.arrs = append(m.arrs, st.AnyArrayInt32(ctx, name, base, length))
+// AddArray registers the region [base,base+length) as a symbolic address
+// region.
+func (m *Memory) AddArray(s *smt.Solver, base int, length int) {
+	m.arrs = append(m.arrs, s.AnyArrayInt32(base, length))
 }
 
-func (m *Memory) Keys() []uint32 {
+// Keys returns all concrete addresses with values in sorted order.
+func (m *Memory) Keys() []int32 {
 	keysmap := m.keys()
-	keys := make([]uint32, 0, len(keysmap))
+	keys := make([]int32, 0, len(keysmap))
 	for k := range keysmap {
 		keys = append(keys, k)
 	}
@@ -42,11 +53,11 @@ func (m *Memory) Keys() []uint32 {
 	return keys
 }
 
-func (m *Memory) keys() map[uint32]struct{} {
+func (m *Memory) keys() map[int32]struct{} {
 	if m == nil {
 		return nil
 	}
-	keys := make(map[uint32]struct{})
+	keys := make(map[int32]struct{})
 	for k := range m.mem {
 		keys[k] = struct{}{}
 	}
@@ -57,22 +68,18 @@ func (m *Memory) keys() map[uint32]struct{} {
 	return keys
 }
 
-func (m *Memory) read(idx st.Uint32, s *z3.Solver) (st.Int32, bool) {
+// returns the value at idx, or false if it does not exist
+func (m *Memory) read(idx smt.Int32, s *smt.Solver) (smt.Int32, bool) {
 	if m == nil {
-		return st.Int32{}, false
+		return smt.Int32{}, false
 	}
 	for _, a := range m.arrs {
 		if a.InBounds(idx, s) {
 			return a.Read(idx, s), true
 		}
 	}
-	// not found in any symbolic array -- concretize
-	if !idx.IsConcrete() {
-		concrete, err := concretize(idx.ToInt32(), s)
-		if err != nil {
-			return st.Int32{}, false
-		}
-		idx = st.Uint32{C: uint32(concrete)}
+	if !idx.Concrete() {
+		return smt.Int32{}, false
 	}
 	if v, ok := m.mem[idx.C]; ok {
 		return v, true
@@ -81,99 +88,107 @@ func (m *Memory) read(idx st.Uint32, s *z3.Solver) (st.Int32, bool) {
 	return v, ok
 }
 
-func (m *Memory) readz(idx st.Uint32, s *z3.Solver) st.Int32 {
-	if m == nil {
-		return st.Int32{}
-	}
+// identical to read but returns the zero value of smt.Int32 if not found
+func (m *Memory) readz(idx smt.Int32, s *smt.Solver) smt.Int32 {
 	v, _ := m.read(idx, s)
 	return v
 }
 
-func (m *Memory) write(idx st.Uint32, val st.Int32, s *z3.Solver) bool {
+// attempt to write val at idx; returns false if the access is out of bounds
+// (only possible when using a symbolic address).
+func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
 	for i := range m.arrs {
 		if m.arrs[i].InBounds(idx, s) {
 			m.arrs[i].Write(idx, val, s)
 			return true
 		}
 	}
-	// not found in any symbolic array -- concretize
-	if !idx.IsConcrete() {
-		concrete, err := concretize(idx.ToInt32(), s)
-		if err != nil {
-			return false
-		}
-		idx = st.Uint32{C: uint32(concrete)}
+	if !idx.Concrete() {
+		return false
 	}
 	m.mem[idx.C] = val
 	return true
 }
 
-func (m *Memory) Write32(addr st.Uint32, val st.Int32, s *z3.Solver) bool {
-	return m.write(addr.Rsh(st.Uint64{C: 2}), val, s)
+// Write32 writes a 32 bit value at addr. Returns false if the access is out of
+// bounds.
+func (m *Memory) Write32(addr, val smt.Int32, s *smt.Solver) bool {
+	return m.write(addr.Srl(smt.Int32{C: 2}, s), val, s)
 }
 
-func (m *Memory) Write16(addr st.Uint32, val st.Int32, s *z3.Solver) bool {
-	wrb := addr.And(st.Uint32{C: 0b11})
-	val = val.ToUint16().ToInt32()
-	wrb8 := wrb.Lsh(st.Uint64{C: 3}).ToUint64()
-	wrword := val.Lsh(wrb8)
-	wrmask := st.Uint32{C: uint32(0x0ffff)}.Lsh(wrb8).Not().ToInt32()
-	idx := addr.Rsh(st.Uint64{C: 2})
-	return m.write(idx, m.readz(idx, s).And(wrmask).Or(wrword), s)
+// Write16 writes a 16-bit value (truncated) at addr. Returns false if the
+// access is out of bounds.
+func (m *Memory) Write16(addr, val smt.Int32, s *smt.Solver) bool {
+	// (addr & 0b11) << 3: this is the index of the first bit in the target
+	// 32-bit word that val will be written to
+	wrb := addr.And(smt.Int32{C: 0b011}, s).Sll(smt.Int32{C: 3}, s)
+	// clear out the top 16 bits just in case
+	val = val.ToInt16(s).ToInt32z(s)
+	// val << wrb: shift 16-bit val over to the target
+	// position.
+	wrword := val.Sll(wrb, s)
+	// ^(0xffff << wrb): shift the mask into position, masking only the correct
+	// 16 bits. This mask will allow us to clear the right 16-bits before ORing
+	// in the new ones.
+	wrmask := smt.Int32{C: 0x0000ffff}.Sll(wrb, s).Not(s)
+	idx := addr.Srl(smt.Int32{C: 2}, s)
+	return m.write(idx, m.readz(idx, s).And(wrmask, s).Or(wrword, s), s)
 }
 
-func (m *Memory) Write8(addr st.Uint32, val st.Int32, s *z3.Solver) bool {
-	wrb := addr.And(st.Uint32{C: 0b11})
-	val = val.ToUint8().ToInt32()
-	wrb8 := wrb.Lsh(st.Uint64{C: 3}).ToUint64()
-	wrword := val.Lsh(wrb8)
-	wrmask := st.Uint32{C: uint32(0x0ff)}.Lsh(wrb8).Not().ToInt32()
-	idx := addr.Rsh(st.Uint64{C: 2})
-	return m.write(idx, m.readz(idx, s).And(wrmask).Or(wrword), s)
+// Write8 writes an 8-bit value (truncated) at addr.
+func (m *Memory) Write8(addr, val smt.Int32, s *smt.Solver) bool {
+	// same as Write16 but for 8 bits
+	wrb := addr.And(smt.Int32{C: 0b011}, s).Sll(smt.Int32{C: 3}, s)
+	val = val.ToInt8(s).ToInt32z(s)
+	wrword := val.Sll(wrb, s)
+	wrmask := smt.Int32{C: 0x000000ff}.Sll(wrb, s).Not(s)
+	idx := addr.Srl(smt.Int32{C: 2}, s)
+	return m.write(idx, m.readz(idx, s).And(wrmask, s).Or(wrword, s), s)
 }
 
-func (m *Memory) Read32(addr st.Uint32, s *z3.Solver) (st.Int32, bool) {
-	idx := addr.Rsh(st.Uint64{C: 2})
-	v, ok := m.read(idx, s)
-	return v, ok
+// Read32 reads the 32-bit value at addr. Returns false if not found.
+func (m *Memory) Read32(addr smt.Int32, s *smt.Solver) (smt.Int32, bool) {
+	idx := addr.Srl(smt.Int32{C: 2}, s)
+	return m.read(idx, s)
 }
 
-func (m *Memory) Read16(addr st.Uint32, s *z3.Solver) (st.Int32, bool) {
-	rdb := addr.And(st.Uint32{C: 0b11})
-	rdb8 := rdb.Lsh(st.Uint64{C: 3}).ToUint64()
-	idx := addr.Rsh(st.Uint64{C: 2})
+// Read16 reads the 16-bit value at addr. Returns false if not found.
+func (m *Memory) Read16(addr smt.Int32, s *smt.Solver) (smt.Int32, bool) {
+	// (addr & 0b11) << 3
+	rdb := addr.And(smt.Int32{C: 0b011}, s).Sll(smt.Int32{C: 3}, s)
+	idx := addr.Srl(smt.Int32{C: 2}, s)
 	if v, ok := m.read(idx, s); ok {
-		return v.Rsh(rdb8).ToInt16().ToInt32(), true
+		return v.Srl(rdb, s).ToInt16(s).ToInt32s(s), true
 	}
-	return st.Int32{}, false
+	return smt.Int32{}, false
 }
 
-func (m *Memory) Read8(addr st.Uint32, s *z3.Solver) (st.Int32, bool) {
-	rdb := addr.And(st.Uint32{C: 0b11})
-	rdb8 := rdb.Lsh(st.Uint64{C: 3}).ToUint64()
-	idx := addr.Rsh(st.Uint64{C: 2})
+// Read8 reads the 8-bit value at addr. Returns false if not found.
+func (m *Memory) Read8(addr smt.Int32, s *smt.Solver) (smt.Int32, bool) {
+	rdb := addr.And(smt.Int32{C: 0b011}, s).Sll(smt.Int32{C: 3}, s)
+	idx := addr.Srl(smt.Int32{C: 2}, s)
 	if v, ok := m.read(idx, s); ok {
-		return v.Rsh(rdb8).ToInt8().ToInt32(), true
+		return v.Srl(rdb, s).ToInt8(s).ToInt32s(s), true
 	}
-	return st.Int32{}, false
+	return smt.Int32{}, false
 }
 
-func (m *Memory) Read16u(addr st.Uint32, s *z3.Solver) (st.Int32, bool) {
-	rdb := addr.And(st.Uint32{C: 0b11})
-	rdb8 := rdb.Lsh(st.Uint64{C: 3}).ToUint64()
-	idx := addr.Rsh(st.Uint64{C: 2})
+// Read16u reads the 16-bit unsigned value at addr. Returns false if not found.
+func (m *Memory) Read16u(addr smt.Int32, s *smt.Solver) (smt.Int32, bool) {
+	rdb := addr.And(smt.Int32{C: 0b011}, s).Sll(smt.Int32{C: 3}, s)
+	idx := addr.Srl(smt.Int32{C: 2}, s)
 	if v, ok := m.read(idx, s); ok {
-		return v.Rsh(rdb8).ToUint16().ToInt32(), true
+		return v.Srl(rdb, s).ToInt16(s).ToInt32z(s), true
 	}
-	return st.Int32{}, false
+	return smt.Int32{}, false
 }
 
-func (m *Memory) Read8u(addr st.Uint32, s *z3.Solver) (st.Int32, bool) {
-	rdb := addr.And(st.Uint32{C: 0b11})
-	rdb8 := rdb.Lsh(st.Uint64{C: 3}).ToUint64()
-	idx := addr.Rsh(st.Uint64{C: 2})
+// Read8u reads the 8-bit unsigned value at addr. Returns false if not found.
+func (m *Memory) Read8u(addr smt.Int32, s *smt.Solver) (smt.Int32, bool) {
+	rdb := addr.And(smt.Int32{C: 0b011}, s).Sll(smt.Int32{C: 3}, s)
+	idx := addr.Srl(smt.Int32{C: 2}, s)
 	if v, ok := m.read(idx, s); ok {
-		return v.Rsh(rdb8).ToUint8().ToInt32(), true
+		return v.Srl(rdb, s).ToInt8(s).ToInt32z(s), true
 	}
-	return st.Int32{}, false
+	return smt.Int32{}, false
 }
