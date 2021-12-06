@@ -2,6 +2,6 @@
 
 .globl _start
 _start:
-	la sp, 0x1000000
+	la sp, 0x80000000
 	j _cstart
 

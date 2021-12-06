@@ -3,7 +3,8 @@ package rvsym
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+
+	"github.com/marcinbor85/gohex"
 )
 
 type Segment struct {
@@ -22,23 +23,43 @@ type BinaryLoader struct {
 }
 
 func (b *BinaryLoader) Load(data []byte) ([]Segment, uint32, error) {
-	if len(data)%4 != 0 {
-		return nil, 0, fmt.Errorf("load: not a multiple of 4")
-	}
-
 	seg := Segment{
 		addr: b.Entry,
-		data: make([]uint32, 0, len(data)/4),
 	}
 
+	seg.data = toWords(data)
+	return []Segment{seg}, b.Entry, nil
+}
+
+type IntelHexLoader struct {
+	Entry uint32
+}
+
+func (l *IntelHexLoader) Load(data []byte) ([]Segment, uint32, error) {
+	mem := gohex.NewMemory()
+	if err := mem.ParseIntelHex(bytes.NewReader(data)); err != nil {
+		return nil, 0, err
+	}
+	hexsegs := mem.GetDataSegments()
+	segs := make([]Segment, len(hexsegs))
+	for i, segment := range hexsegs {
+		segs[i] = Segment{
+			addr: segment.Address,
+			data: toWords(segment.Data),
+		}
+	}
+	return segs, l.Entry, nil
+}
+
+func toWords(data []byte) []uint32 {
+	words := make([]uint32, 0, len(data)/4)
 	i := 0
 	for i < len(data) {
 		var ui uint32
 		buf := bytes.NewReader(data[i:])
 		binary.Read(buf, binary.LittleEndian, &ui)
-		seg.data = append(seg.data, ui)
+		words = append(words, ui)
 		i += int(buf.Size()) - buf.Len()
 	}
-	return []Segment{seg}, b.Entry, nil
-
+	return words
 }

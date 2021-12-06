@@ -38,5 +38,8 @@ LIBOBJ += $(RVSYM_LIB)/start.o $(RVSYM_LIB)/libc.o $(RVSYM_LIB)/cstart.o
 %.bin: %.elf
 	$(OBJCOPY) $< -S -O binary $@
 
+%.hex: %.elf
+	$(OBJCOPY) $< -S -O ihex --set-start 0x1000 $@
+
 %.list: %.elf
 	$(OBJDUMP) -D $< > $@

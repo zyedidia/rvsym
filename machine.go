@@ -120,12 +120,12 @@ func (m *Machine) Exec(s *smt.Solver) {
 }
 
 func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
-	mustconc := func(val smt.Int32, errmsg string) (int32, bool) {
+	mustconc := func(val smt.Int32, errmsg string) (uint32, bool) {
 		if !val.Concrete() {
 			m.err(fmt.Errorf(errmsg))
 			return 0, false
 		}
-		return val.C, true
+		return uint32(val.C), true
 	}
 
 	switch symnum {
@@ -143,7 +143,7 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 	case SymQuietExit:
 		m.exit(ExitQuiet)
 	case SymMarkArray:
-		var ptr, nbytes int32
+		var ptr, nbytes uint32
 		var ok bool
 		if ptr, ok = mustconc(m.regs[11], "array address is symbolic"); !ok {
 			return
@@ -151,9 +151,9 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 		if nbytes, ok = mustconc(m.regs[12], "array size is symbolic"); !ok {
 			return
 		}
-		m.mem.AddArray(s, uint32(ptr/4), uint32((nbytes+3)/4))
+		m.mem.AddArray(s, ptr/4, (nbytes+3)/4)
 	case SymMarkBytes:
-		var ptr, nbytes, nameptr int32
+		var ptr, nbytes, nameptr uint32
 		var ok bool
 		if ptr, ok = mustconc(m.regs[11], "value address is symbolic"); !ok {
 			return
@@ -171,20 +171,20 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 			return
 		}
 
-		markUnaligned := func(base, idx, length int32) int32 {
+		markUnaligned := func(base, idx, length uint32) uint32 {
 			for i := idx; i < idx+length; i++ {
 				i32 := s.AnyInt32()
 				s.Assert(i32.And(smt.Int32{C: ^0x0ff}, s).Eqz(s))
-				m.markSym(i32, fmt.Sprintf("%s[%d]", name, uint32(i-base)))
-				m.mem.Write8(smt.Int32{C: i}, i32, s)
+				m.markSym(i32, fmt.Sprintf("%s[%d]", name, i-base))
+				m.mem.Write8(smt.Int32{C: int32(i)}, i32, s)
 			}
 			return length
 		}
-		markAligned := func(base, idx, length int32) int32 {
+		markAligned := func(base, idx, length uint32) uint32 {
 			for i := idx; i < idx+length; i += 4 {
 				i32 := s.AnyInt32()
-				m.markSym(i32, fmt.Sprintf("%s[%d:%d]", name, uint32(i+3-base), uint32(i-base)))
-				m.mem.Write32(smt.Int32{C: i}, i32, s)
+				m.markSym(i32, fmt.Sprintf("%s[%d:%d]", name, i+3-base, i-base))
+				m.mem.Write32(smt.Int32{C: int32(i)}, i32, s)
 			}
 			return length
 		}
@@ -205,10 +205,10 @@ func (m *Machine) markSym(val smt.Int32, name string) {
 	m.symvals = append(m.symvals, SymVal{val, name})
 }
 
-func (m *Machine) readString(ptr int32, size int32, s *smt.Solver) (string, error) {
+func (m *Machine) readString(ptr uint32, size uint32, s *smt.Solver) (string, error) {
 	buf := &bytes.Buffer{}
-	for i := int32(0); ; i++ {
-		if b, ok := m.mem.Read8u(smt.Int32{C: ptr + i}, s); !ok {
+	for i := uint32(0); ; i++ {
+		if b, ok := m.mem.Read8u(smt.Int32{C: int32(ptr + i)}, s); !ok {
 			return "", fmt.Errorf("out of bounds string")
 		} else if !b.Concrete() {
 			return "", fmt.Errorf("symbolic byte in string")

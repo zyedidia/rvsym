@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"runtime/pprof"
+	"strings"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/zyedidia/rvsym"
@@ -26,7 +27,7 @@ func main() {
 	flagparser.Usage = "[OPTIONS] BINFILE"
 	args, err := flagparser.Parse()
 	if err != nil {
-		os.Exit(1)
+		fatal(err)
 	}
 
 	if opts.Version {
@@ -51,9 +52,19 @@ func main() {
 	bin, err := ioutil.ReadFile(args[0])
 	must("read", err)
 
-	loader := &rvsym.BinaryLoader{
-		Entry: 0x1000,
+	var loader rvsym.Loader
+	if strings.HasSuffix(args[0], ".hex") {
+		loader = &rvsym.IntelHexLoader{
+			Entry: opts.Entry,
+		}
+	} else if strings.HasSuffix(args[0], ".bin") {
+		loader = &rvsym.BinaryLoader{
+			Entry: opts.Entry,
+		}
+	} else {
+		fatal("unknown file format, expected .hex or .bin")
 	}
+
 	segs, entry, err := loader.Load(bin)
 	must("load", err)
 

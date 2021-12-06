@@ -1,11 +1,11 @@
 include $(RVSYM_ROOT)/lib/rules.mk
 
 C=$(wildcard *.c)
-PROGS=$(C:.c=.bin)
+PROGS=$(C:.c=.hex)
 
 all: $(PROGS)
 
 clean:
-	rm -f *.bin *.o *.elf *.list
+	rm -f *.bin *.o *.elf *.list *.hex
 
 .PHONY: all clean

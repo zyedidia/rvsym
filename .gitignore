@@ -1,6 +1,7 @@
 *.o
 *.list
 *.bin
+*.hex
 *.hh
 *.cxx
 *.elf
