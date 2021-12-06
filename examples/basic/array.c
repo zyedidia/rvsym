@@ -7,7 +7,7 @@ int main() {
     rvsym_assume(addr < 100);
 
     int array[100];
-    rvsym_mark_array(&array, sizeof(array), "array");
+    rvsym_mark_array(&array, sizeof(array));
 
     for (int i = 0; i < 100; i++) {
         array[i] = i;

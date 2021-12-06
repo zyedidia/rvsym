@@ -115,6 +115,7 @@ func (m *Memory) readz(idx smt.Int32, s *smt.Solver) smt.Int32 {
 // attempt to write val at idx; returns false if the access is out of bounds
 // (only possible when using a symbolic address).
 func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
+
 	for i := range m.arrs {
 		if m.arrs[i].InBounds(idx, s) {
 			m.arrs[i].Write(idx, val, s)
