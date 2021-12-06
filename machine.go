@@ -363,17 +363,20 @@ func Restore(cp *Checkpoint, s *smt.Solver) *Machine {
 }
 
 func (m *Machine) Checkpoint(cond smt.Bool) *Checkpoint {
-	var cp Checkpoint
+	cp := &Checkpoint{
+		regs: make([]smt.Int32, len(m.regs)),
+		mem:  NewMemory(m.mem),
+		vals: make([]SymVal, len(m.symvals)),
+		pc:   m.pc,
+		cond: cond,
+	}
 
-	cp.regs = make([]smt.Int32, len(m.regs))
 	copy(cp.regs, m.regs)
-	cp.mem = NewMemory(m.mem)
+	copy(cp.vals, m.symvals)
 	// duplicate memory because current m.mem must become read-only
 	m.mem = NewMemory(m.mem)
-	cp.vals = make([]SymVal, len(m.symvals))
-	copy(cp.vals, m.symvals)
 
-	return &cp
+	return cp
 }
 
 func (m *Machine) AddCond(cond smt.Bool, checksat bool, s *smt.Solver) {
@@ -387,4 +390,25 @@ func (m *Machine) AddCond(cond smt.Bool, checksat bool, s *smt.Solver) {
 			m.err(fmt.Errorf("smt solver returned unknown"))
 		}
 	}
+}
+
+func (m *Machine) TestCase(s *smt.Solver) (TestCase, bool) {
+	res := s.Check()
+	if res != smt.Sat {
+		return TestCase{}, false
+	}
+	model := s.Model()
+	vars := make([]Assignment, len(m.symvals))
+	for i, v := range m.symvals {
+		vars[i] = Assignment{
+			Name: v.name,
+			Val:  model.Eval(v.val),
+		}
+	}
+	return TestCase{
+		Assignments: vars,
+		Pc:          m.pc,
+		Exit:        m.Status.Exit,
+		Err:         m.Status.Err,
+	}, true
 }

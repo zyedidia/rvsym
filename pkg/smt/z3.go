@@ -2,7 +2,9 @@
 
 package smt
 
-import "github.com/zyedidia/rvsym/pkg/smt/z3"
+import (
+	"github.com/zyedidia/rvsym/pkg/smt/z3"
+)
 
 type Solver struct {
 	ctx    *z3.Context

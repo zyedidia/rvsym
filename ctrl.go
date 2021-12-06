@@ -13,6 +13,22 @@ const (
 	ExitUnsat
 )
 
+func (e ExitStatus) String() string {
+	switch e {
+	case ExitNone:
+		return "no exit"
+	case ExitNormal:
+		return "exit"
+	case ExitFail:
+		return "failure"
+	case ExitUnsat:
+		return "unsat"
+	case ExitMem:
+		return "memory failure"
+	}
+	return "quiet"
+}
+
 // control code definitions
 
 const (

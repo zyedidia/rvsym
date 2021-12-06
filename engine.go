@@ -8,6 +8,8 @@ type Engine struct {
 	active      *Machine
 	checkpoints []*Checkpoint
 	smt         *smt.Solver
+
+	tcs []TestCase
 }
 
 func NewEngine(segs []Segment, entrypc uint32) *Engine {
@@ -94,7 +96,25 @@ func (e *Engine) HandleExit(m *Machine) bool {
 
 func (e *Engine) HasExit(m *Machine) bool {
 	if m.Status.Exit != ExitNone {
+		switch m.Status.Exit {
+		case ExitNormal, ExitFail:
+			tc, sat := m.TestCase(e.smt)
+			if sat {
+				e.tcs = append(e.tcs, tc)
+			} else {
+				m.Status.Exit = ExitUnsat
+			}
+		case ExitQuiet:
+		}
 		return true
 	}
 	return false
+}
+
+func (e *Engine) TestCases() []TestCase {
+	return e.tcs
+}
+
+func (e *Engine) NumTestCases() int {
+	return len(e.tcs)
 }

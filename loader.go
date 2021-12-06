@@ -39,6 +39,6 @@ func (b *BinaryLoader) Load(data []byte) ([]Segment, uint32, error) {
 		seg.data = append(seg.data, ui)
 		i += int(buf.Size()) - buf.Len()
 	}
-	return []Segment{seg}, 0, nil
+	return []Segment{seg}, b.Entry, nil
 
 }
