@@ -128,10 +128,10 @@ func (a SymInt8) Valid() bool {
 }
 
 func (a SymInt8) ToInt32s(s *Solver) SymInt32 {
-	return SymInt32{C.boolector_sext(s.btor, a.BV, 32)}
+	return SymInt32{C.boolector_sext(s.btor, a.BV, 24)}
 }
 func (a SymInt8) ToInt32z(s *Solver) SymInt32 {
-	return SymInt32{C.boolector_uext(s.btor, a.BV, 32)}
+	return SymInt32{C.boolector_uext(s.btor, a.BV, 24)}
 }
 
 type SymInt16 struct {
@@ -143,10 +143,10 @@ func (a SymInt16) Valid() bool {
 }
 
 func (a SymInt16) ToInt32s(s *Solver) SymInt32 {
-	return SymInt32{C.boolector_sext(s.btor, a.BV, 32)}
+	return SymInt32{C.boolector_sext(s.btor, a.BV, 16)}
 }
 func (a SymInt16) ToInt32z(s *Solver) SymInt32 {
-	return SymInt32{C.boolector_uext(s.btor, a.BV, 32)}
+	return SymInt32{C.boolector_uext(s.btor, a.BV, 16)}
 }
 
 type SymInt64 struct {
@@ -212,10 +212,10 @@ func (a SymInt32) Sra(b SymInt32, s *Solver) SymInt32 {
 	return SymInt32{C.boolector_sra(s.btor, a.BV, b.BV)}
 }
 func (a SymInt32) Slt(b SymInt32, s *Solver) SymInt32 {
-	return SymInt32{C.boolector_uext(s.btor, C.boolector_slt(s.btor, a.BV, b.BV), 32)}
+	return SymInt32{C.boolector_uext(s.btor, C.boolector_slt(s.btor, a.BV, b.BV), 31)}
 }
 func (a SymInt32) Ult(b SymInt32, s *Solver) SymInt32 {
-	return SymInt32{C.boolector_uext(s.btor, C.boolector_ult(s.btor, a.BV, b.BV), 32)}
+	return SymInt32{C.boolector_uext(s.btor, C.boolector_ult(s.btor, a.BV, b.BV), 31)}
 }
 func (a SymInt32) Mul(b SymInt32, s *Solver) SymInt32 {
 	return SymInt32{C.boolector_mul(s.btor, a.BV, b.BV)}
@@ -254,10 +254,10 @@ func (a SymInt32) ToInt16(s *Solver) SymInt16 {
 	return SymInt16{C.boolector_slice(s.btor, a.BV, 15, 0)}
 }
 func (a SymInt32) ToInt64s(s *Solver) SymInt64 {
-	return SymInt64{C.boolector_sext(s.btor, a.BV, 64)}
+	return SymInt64{C.boolector_sext(s.btor, a.BV, 32)}
 }
 func (a SymInt32) ToInt64z(s *Solver) SymInt64 {
-	return SymInt64{C.boolector_uext(s.btor, a.BV, 64)}
+	return SymInt64{C.boolector_uext(s.btor, a.BV, 32)}
 }
 
 type SymArrayInt32 struct {

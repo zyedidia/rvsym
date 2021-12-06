@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"runtime/pprof"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/zyedidia/rvsym"
@@ -38,6 +39,15 @@ func main() {
 		os.Exit(0)
 	}
 
+	if opts.Profile != "" {
+		f, err := os.Create(opts.Profile)
+		must("profile", err)
+		defer f.Close() // error handling omitted for example
+		err = pprof.StartCPUProfile(f)
+		must("profile", err)
+		defer pprof.StopCPUProfile()
+	}
+
 	bin, err := ioutil.ReadFile(args[0])
 	must("read", err)
 
@@ -61,7 +71,7 @@ func showtc(eng *rvsym.Engine, last int) int {
 		last = eng.NumTestCases()
 		tc := eng.TestCases()[last-1]
 		fmt.Printf("--- Test case %d: %v at 0x%x ---\n", last-1, tc.Exit, uint64(tc.Pc))
-		fmt.Print(tc.String(false))
+		fmt.Print(tc.String(true))
 		fmt.Println("---")
 	}
 	return last
