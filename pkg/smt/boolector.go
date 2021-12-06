@@ -6,7 +6,17 @@ package smt
 //#cgo LDFLAGS: -L./deps/lib -lboolector -llgl -lbtor2parser -lm
 //#include <stdlib.h>
 //#include "boolector.h"
-//void boolector_multi_assert(Btor* btor, BoolectorNode** bools, int nbools);
+// int32_t boolector_multi_assert(Btor* btor, BoolectorNode** bools, int nbools) {
+// 	for (int i = 0; i < nbools; i++) {
+// 		if (!bools[i]) {
+// 			boolector_push(btor, 1);
+// 		} else {
+// 			boolector_assert(btor, bools[i]);
+// 		}
+// 	}
+// 	int32_t res = boolector_sat(btor);
+// 	return res;
+// }
 import "C"
 import (
 	"strconv"
@@ -55,15 +65,6 @@ func NewSolver() *Solver {
 	}
 }
 
-func (s *Solver) applyAsserts() {
-	if len(s.asserts) == 0 {
-		return
-	}
-
-	C.boolector_multi_assert(s.btor, &s.asserts[0], C.int(len(s.asserts)))
-	s.asserts = nil
-}
-
 func (s *Solver) Push() {
 	s.asserts = append(s.asserts, nil)
 }
@@ -77,8 +78,11 @@ func (s *Solver) Assert(b Bool) {
 }
 
 func (s *Solver) Check() CheckResult {
-	s.applyAsserts()
-	result := C.boolector_sat(s.btor)
+	if len(s.asserts) == 0 {
+		return Sat
+	}
+	result := C.boolector_multi_assert(s.btor, &s.asserts[0], C.int(len(s.asserts)))
+	s.asserts = nil
 	switch result {
 	case C.BOOLECTOR_SAT:
 		return Sat
