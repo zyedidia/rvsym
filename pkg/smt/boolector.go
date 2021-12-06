@@ -6,26 +6,13 @@ package smt
 //#cgo LDFLAGS: -L./deps/lib -lboolector -llgl -lbtor2parser -lm
 //#include <stdlib.h>
 //#include "boolector.h"
-// int32_t boolector_multi_assert(Btor* btor, BoolectorNode** bools, int nbools, bool model) {
-// 	for (int i = 0; i < nbools; i++) {
-// 		if (!bools[i]) {
-// 			boolector_push(btor, 1);
-// 		} else {
-// 			boolector_assert(btor, bools[i]);
-// 		}
-// 	}
-//  boolector_set_opt(btor, BTOR_OPT_MODEL_GEN, model);
-// 	int32_t res = boolector_sat(btor);
-// 	return res;
-// }
 import "C"
 import (
 	"strconv"
 )
 
 type Solver struct {
-	btor    *C.Btor
-	asserts []*C.BoolectorNode
+	btor *C.Btor
 
 	sorts
 }
@@ -66,7 +53,7 @@ func NewSolver() *Solver {
 }
 
 func (s *Solver) Push() {
-	s.asserts = append(s.asserts, nil)
+	C.boolector_push(s.btor, 1)
 }
 
 func (s *Solver) Pop() {
@@ -74,18 +61,16 @@ func (s *Solver) Pop() {
 }
 
 func (s *Solver) Assert(b Bool) {
-	s.asserts = append(s.asserts, b.Sym(s).BV)
+	C.boolector_assert(s.btor, b.Sym(s).BV)
 }
 
 func (s *Solver) Check(model bool) CheckResult {
-	var ptr **C.BoolectorNode
-	if len(s.asserts) == 0 {
-		ptr = nil
+	if model {
+		C.boolector_set_opt(s.btor, C.BTOR_OPT_MODEL_GEN, 1)
 	} else {
-		ptr = &s.asserts[0]
+		C.boolector_set_opt(s.btor, C.BTOR_OPT_MODEL_GEN, 0)
 	}
-	result := C.boolector_multi_assert(s.btor, ptr, C.int(len(s.asserts)), C.bool(model))
-	s.asserts = nil
+	result := C.boolector_sat(s.btor)
 	switch result {
 	case C.BOOLECTOR_SAT:
 		return Sat
