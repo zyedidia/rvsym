@@ -34,10 +34,28 @@ func NewMemory(rdmem *Memory) *Memory {
 	}
 }
 
+type tmpval struct {
+	idx uint32
+	val smt.Int32
+}
+
 // AddArray registers the region [base,base+length) as a symbolic address
-// region.
+// region. Note that base and length are word addresses.
 func (m *Memory) AddArray(s *smt.Solver, base uint32, length uint32) {
+	vals := make([]tmpval, 0, length)
+	for i := base; i < base+length; i++ {
+		v, ok := m.mem[int32(i)]
+		if ok {
+			vals = append(vals, tmpval{
+				idx: i,
+				val: v,
+			})
+		}
+	}
 	m.arrs = append(m.arrs, s.AnyArrayInt32(base, length))
+	for _, v := range vals {
+		m.write(smt.Int32{C: int32(v.idx)}, v.val, s)
+	}
 }
 
 // Keys returns all concrete addresses with values in sorted order.
