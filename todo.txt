@@ -1,0 +1,3 @@
+check int32 usage for array/memory ops
+copy data over when marking an array
+use constraints for array for z3 (why is z3 slow with .Sym?)

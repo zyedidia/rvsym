@@ -148,10 +148,22 @@ func (a SymInt32) Eqz(s *Solver) SymBool {
 func (a SymInt32) NEqz(s *Solver) SymBool {
 	return SymBool{}
 }
+func (a SymInt32) Eqb(b SymInt32, s *Solver) SymBool {
+	return SymBool{}
+}
+func (a SymInt32) NEqb(b SymInt32, s *Solver) SymBool {
+	return SymBool{}
+}
 func (a SymInt32) Sltb(b SymInt32, s *Solver) SymBool {
 	return SymBool{}
 }
 func (a SymInt32) Sgeb(b SymInt32, s *Solver) SymBool {
+	return SymBool{}
+}
+func (a SymInt32) Ultb(b SymInt32, s *Solver) SymBool {
+	return SymBool{}
+}
+func (a SymInt32) Ugeb(b SymInt32, s *Solver) SymBool {
 	return SymBool{}
 }
 func (a SymInt32) ToInt8(s *Solver) SymInt8 {

@@ -36,7 +36,7 @@ func NewMemory(rdmem *Memory) *Memory {
 
 // AddArray registers the region [base,base+length) as a symbolic address
 // region.
-func (m *Memory) AddArray(s *smt.Solver, base int, length int) {
+func (m *Memory) AddArray(s *smt.Solver, base uint32, length uint32) {
 	m.arrs = append(m.arrs, s.AnyArrayInt32(base, length))
 }
 

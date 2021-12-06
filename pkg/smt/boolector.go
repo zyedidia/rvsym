@@ -97,10 +97,10 @@ func (m Model) Eval(a Int32) int32 {
 func (s *Solver) AnyInt32() Int32 {
 	return Int32{S: SymInt32{C.boolector_var(s.btor, s.sortInt32, nil)}}
 }
-func (s *Solver) AnyArrayInt32(base, length int) ArrayInt32 {
+func (s *Solver) AnyArrayInt32(base, length uint32) ArrayInt32 {
 	return ArrayInt32{
-		base:   int32(base),
-		length: int32(length),
+		base:   base,
+		length: length,
 		S:      SymArrayInt32{C.boolector_array(s.btor, s.sortArrayInt32, nil)},
 	}
 }
@@ -241,11 +241,23 @@ func (a SymInt32) Eqz(s *Solver) SymBool {
 func (a SymInt32) NEqz(s *Solver) SymBool {
 	return SymBool{C.boolector_ne(s.btor, a.BV, s.ToSymInt32(0).BV)}
 }
+func (a SymInt32) Eqb(b SymInt32, s *Solver) SymBool {
+	return SymBool{C.boolector_eq(s.btor, a.BV, b.BV)}
+}
+func (a SymInt32) NEqb(b SymInt32, s *Solver) SymBool {
+	return SymBool{C.boolector_ne(s.btor, a.BV, b.BV)}
+}
 func (a SymInt32) Sltb(b SymInt32, s *Solver) SymBool {
 	return SymBool{C.boolector_slt(s.btor, a.BV, b.BV)}
 }
 func (a SymInt32) Sgeb(b SymInt32, s *Solver) SymBool {
 	return SymBool{C.boolector_sgte(s.btor, a.BV, b.BV)}
+}
+func (a SymInt32) Ultb(b SymInt32, s *Solver) SymBool {
+	return SymBool{C.boolector_ult(s.btor, a.BV, b.BV)}
+}
+func (a SymInt32) Ugeb(b SymInt32, s *Solver) SymBool {
+	return SymBool{C.boolector_ugte(s.btor, a.BV, b.BV)}
 }
 func (a SymInt32) ToInt8(s *Solver) SymInt8 {
 	return SymInt8{C.boolector_slice(s.btor, a.BV, 7, 0)}

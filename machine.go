@@ -151,7 +151,7 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 		if nbytes, ok = mustconc(m.regs[12], "array size is symbolic"); !ok {
 			return
 		}
-		m.mem.AddArray(s, int(ptr/4), int((nbytes+3)/4))
+		m.mem.AddArray(s, uint32(ptr/4), uint32((nbytes+3)/4))
 	case SymMarkBytes:
 		var ptr, nbytes, nameptr int32
 		var ok bool
@@ -241,24 +241,31 @@ func (m *Machine) iarith(insn uint32, s *smt.Solver) {
 func (m *Machine) branch(insn uint32, s *smt.Solver) {
 	imm := extractImm(insn, ImmTypeB)
 
-	var op AluOp
-	switch funct3(insn) {
-	case 0b000, 0b001:
-		op = AluXor
-	case 0b100, 0b101:
-		op = AluSlt
-	case 0b110, 0b111:
-		op = AluSltu
-	}
+	const (
+		beq  = 0b000
+		bne  = 0b001
+		blt  = 0b100
+		bge  = 0b101
+		bltu = 0b110
+		bgeu = 0b111
+	)
 
-	res := m.alu(m.regs[rs1(insn)], m.regs[rs2(insn)], op, s)
+	r1, r2 := m.regs[rs1(insn)], m.regs[rs2(insn)]
 
 	var cond smt.Bool
 	switch funct3(insn) {
-	case 0b000, 0b101, 0b111:
-		cond = res.Eqz(s)
-	case 0b001, 0b100, 0b110:
-		cond = res.NEqz(s)
+	case beq:
+		cond = r1.Eqb(r2, s)
+	case bne:
+		cond = r1.NEqb(r2, s)
+	case blt:
+		cond = r1.Sltb(r2, s)
+	case bge:
+		cond = r1.Sgeb(r2, s)
+	case bltu:
+		cond = r1.Ultb(r2, s)
+	case bgeu:
+		cond = r1.Ugeb(r2, s)
 	}
 
 	m.br(m.pc+imm, cond)

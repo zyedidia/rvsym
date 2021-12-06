@@ -88,10 +88,10 @@ func (s *Solver) AnyInt32() Int32 {
 	return Int32{S: SymInt32{s.ctx.FreshConst("", s.sortInt32).(z3.BV)}}
 }
 
-func (s *Solver) AnyArrayInt32(base, length int) ArrayInt32 {
+func (s *Solver) AnyArrayInt32(base, length uint32) ArrayInt32 {
 	return ArrayInt32{
-		base:   int32(base),
-		length: int32(length),
+		base:   base,
+		length: length,
 		S:      SymArrayInt32{s.ctx.FreshConst("", s.sortArrayInt32).(z3.Array)},
 	}
 }
@@ -238,11 +238,23 @@ func (a SymInt32) Eqz(s *Solver) SymBool {
 func (a SymInt32) NEqz(s *Solver) SymBool {
 	return SymBool{a.BV.NE(s.ctx.FromInt(0, s.sortInt32).(z3.BV))}
 }
+func (a SymInt32) Eqb(b SymInt32, s *Solver) SymBool {
+	return SymBool{a.BV.Eq(b.BV)}
+}
+func (a SymInt32) NEqb(b SymInt32, s *Solver) SymBool {
+	return SymBool{a.BV.NE(b.BV)}
+}
 func (a SymInt32) Sltb(b SymInt32, s *Solver) SymBool {
 	return SymBool{a.BV.SLT(b.BV)}
 }
 func (a SymInt32) Sgeb(b SymInt32, s *Solver) SymBool {
 	return SymBool{a.BV.SGE(b.BV)}
+}
+func (a SymInt32) Ultb(b SymInt32, s *Solver) SymBool {
+	return SymBool{a.BV.ULT(b.BV)}
+}
+func (a SymInt32) Ugeb(b SymInt32, s *Solver) SymBool {
+	return SymBool{a.BV.UGE(b.BV)}
 }
 func (a SymInt32) ToInt8(s *Solver) SymInt8 {
 	return SymInt8{a.BV.Extract(7, 0)}

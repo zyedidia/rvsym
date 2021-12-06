@@ -18,7 +18,7 @@ int main() {
     soc.memory_p_ram__unit_2e_mem[0].set<uint32_t>(instr);
 
     // rvsym_assume(((instr >> 7) & 0x1f) == 0);
-    // rvsym_assume((instr & 0b1111111) == 0b0010011);
+    rvsym_assume((instr & 0b1111111) == 0b0010011);
     // rvsym_assume(instr == 0x02a00093);
 
     soc.p_clk.set<bool>(false);

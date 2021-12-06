@@ -132,6 +132,42 @@ func (a Int32) NEqz(s *Solver) Bool {
 	}
 	return Bool{S: a.S.NEqz(s)}
 }
+func (a Int32) Eqb(b Int32, s *Solver) Bool {
+	if a.Concrete() && b.Concrete() {
+		return Bool{C: a.C == b.C}
+	}
+	return Bool{S: a.Sym(s).Eqb(b.Sym(s), s)}
+}
+func (a Int32) NEqb(b Int32, s *Solver) Bool {
+	if a.Concrete() && b.Concrete() {
+		return Bool{C: a.C != b.C}
+	}
+	return Bool{S: a.Sym(s).NEqb(b.Sym(s), s)}
+}
+func (a Int32) Sltb(b Int32, s *Solver) Bool {
+	if a.Concrete() && b.Concrete() {
+		return Bool{C: a.C < b.C}
+	}
+	return Bool{S: a.Sym(s).Sltb(b.Sym(s), s)}
+}
+func (a Int32) Ultb(b Int32, s *Solver) Bool {
+	if a.Concrete() && b.Concrete() {
+		return Bool{C: uint32(a.C) < uint32(b.C)}
+	}
+	return Bool{S: a.Sym(s).Ultb(b.Sym(s), s)}
+}
+func (a Int32) Sgeb(b Int32, s *Solver) Bool {
+	if a.Concrete() && b.Concrete() {
+		return Bool{C: a.C >= b.C}
+	}
+	return Bool{S: a.Sym(s).Sgeb(b.Sym(s), s)}
+}
+func (a Int32) Ugeb(b Int32, s *Solver) Bool {
+	if a.Concrete() && b.Concrete() {
+		return Bool{C: uint32(a.C) >= uint32(b.C)}
+	}
+	return Bool{S: a.Sym(s).Ugeb(b.Sym(s), s)}
+}
 func (a Int32) ToInt8(s *Solver) Int8 {
 	if a.Concrete() {
 		return Int8{C: int8(a.C)}
@@ -264,19 +300,19 @@ func (a Bool) Not(s *Solver) Bool {
 }
 
 type ArrayInt32 struct {
-	base   int32
-	length int32
+	base   uint32
+	length uint32
 	S      SymArrayInt32
 }
 
 func (a ArrayInt32) InBounds(idx Int32, s *Solver) bool {
 	if idx.Concrete() {
-		return int32(idx.C) >= a.base && int32(idx.C) < a.base+a.length
+		return uint32(idx.C) >= a.base && uint32(idx.C) < a.base+a.length
 	}
 
 	s.Push()
-	s.Assert(Bool{S: idx.S.Sgeb(s.ToSymInt32(a.base), s)})
-	s.Assert(Bool{S: idx.S.Sltb(s.ToSymInt32(a.base+a.length), s)})
+	s.Assert(Bool{S: idx.S.Ugeb(s.ToSymInt32(int32(a.base)), s)})
+	s.Assert(Bool{S: idx.S.Ultb(s.ToSymInt32(int32(a.base+a.length)), s)})
 	res := s.Check()
 	s.Pop()
 	return res == Sat
