@@ -32,6 +32,12 @@ func (a Int32) Sub(b Int32, s *Solver) Int32 {
 	if a.Concrete() && b.Concrete() {
 		return Int32{C: a.C - b.C}
 	}
+	if a.Concrete() && a.C == 0 {
+		return b
+	}
+	if b.Concrete() && b.C == 0 {
+		return a
+	}
 	return Int32{S: a.Sym(s).Sub(b.Sym(s), s)}
 }
 func (a Int32) And(b Int32, s *Solver) Int32 {
