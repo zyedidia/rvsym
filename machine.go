@@ -3,7 +3,6 @@ package rvsym
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/zyedidia/rvsym/bits"
@@ -162,6 +161,8 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 			return
 		}
 		m.mem.AddArray(s, ptr/4, (nbytes+3)/4)
+
+		logger.Printf("Marking symbolic array: %d bytes at 0x%x\n", nbytes, ptr)
 	case SymMarkOutput:
 		var ptr, nbytes, nameptr uint32
 		var ok bool
@@ -174,13 +175,14 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 		if nameptr, ok = mustconc(m.regs[13], "value name address is symbolic"); !ok {
 			return
 		}
-		log.Printf("Marking output: %d bytes at 0x%x\n", nbytes, ptr)
 
 		name, err := m.readString(nameptr, nbytes, s)
 		if err != nil {
 			m.err(err)
 			return
 		}
+
+		logger.Printf("Marking output '%s': %d bytes at 0x%x\n", name, nbytes, ptr)
 
 		m.outputs = append(m.outputs, Output{
 			base: ptr,
@@ -199,13 +201,13 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 		if nameptr, ok = mustconc(m.regs[13], "value name address is symbolic"); !ok {
 			return
 		}
-		log.Printf("Marking symbolic value: %d bytes at 0x%x\n", nbytes, ptr)
 
 		name, err := m.readString(nameptr, nbytes, s)
 		if err != nil {
 			m.err(err)
 			return
 		}
+		logger.Printf("Marking symbolic value '%s': %d bytes at 0x%x\n", name, nbytes, ptr)
 
 		markUnaligned := func(base, idx, length uint32) uint32 {
 			for i := idx; i < idx+length; i++ {
@@ -342,7 +344,7 @@ func (m *Machine) load(insn uint32, s *smt.Solver) {
 		addrc := uint32(addr.C)
 		for _, o := range m.outputs {
 			if addrc >= o.base && addrc < o.base+o.size {
-				log.Printf("read from '%s' 0x%x at time %v\n", o.name, addrc, m.time)
+				logger.Printf("read from '%s' 0x%x at time %v\n", o.name, addrc, m.time)
 			}
 		}
 	}
@@ -384,7 +386,7 @@ func (m *Machine) store(insn uint32, s *smt.Solver) {
 		addrc := uint32(addr.C)
 		for _, o := range m.outputs {
 			if addrc >= o.base && addrc < o.base+o.size {
-				log.Printf("write %v to '%s' 0x%x at time %v\n", stval.S, o.name, addrc, m.time)
+				logger.Printf("write %v to '%s' 0x%x at time %v\n", stval.S, o.name, addrc, m.time)
 			}
 		}
 	}
