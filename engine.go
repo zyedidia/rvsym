@@ -72,16 +72,20 @@ func (e *Engine) Step() bool {
 		e.smt.Push()
 		e.smt.Assert(alt)
 		res := e.smt.Check(false)
-		e.smt.Pop()
 		if res == smt.Sat {
-			checkpoint := m.Checkpoint(alt)
-			checkpoint.pc = altpc
-			e.checkpoints = append(e.checkpoints, checkpoint)
-			e.smt.Push()
-		}
+			// alt is sat, so we take that branch and checkpoint cond to return
+			// to later
+			m.pc = altpc
 
-		m.pc = condpc
-		m.AddCond(cond, true, e.smt)
+			checkpoint := m.Checkpoint(cond)
+			checkpoint.pc = condpc
+			e.checkpoints = append(e.checkpoints, checkpoint)
+		} else {
+			// alt was unsat so we go directly to cond
+			e.smt.Pop()
+			m.pc = condpc
+			m.AddCond(cond, true, e.smt)
+		}
 	default:
 		m.pc += 4
 	}
