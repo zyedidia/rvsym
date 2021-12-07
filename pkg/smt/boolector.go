@@ -60,19 +60,21 @@ func NewSolver() *Solver {
 }
 
 func (s *Solver) Push() {
+	// fmt.Println("push")
 	C.boolector_push(s.btor, 1)
 }
 
 func (s *Solver) Pop() {
+	// fmt.Println("pop")
 	C.boolector_pop(s.btor, 1)
 }
 
 func (s *Solver) Assert(b Bool) {
 	n := b.Sym(s).BV
-	C.boolector_assert(s.btor, n)
 	// fmt.Print("assert: ")
-	// C.boolector_dump_btor_node(s.btor, C.stdout, n)
+	// C.fflush(C.stdout)
 	// fmt.Println()
+	C.boolector_assert(s.btor, n)
 }
 
 func (s *Solver) Check(model bool) CheckResult {
@@ -81,7 +83,10 @@ func (s *Solver) Check(model bool) CheckResult {
 	} else {
 		C.boolector_set_opt(s.btor, C.BTOR_OPT_MODEL_GEN, 0)
 	}
+	// C.boolector_dump_smt2(s.btor, C.stdout)
+	// C.fflush(C.stdout)
 	result := C.boolector_sat(s.btor)
+	// fmt.Println("check", result)
 	switch result {
 	case C.BOOLECTOR_SAT:
 		return Sat
@@ -119,7 +124,7 @@ func (s *Solver) AnyArrayInt32(base, length uint32) ArrayInt32 {
 	return ArrayInt32{
 		base:   base,
 		length: length,
-		S:      SymArrayInt32{C.boolector_array(s.btor, s.sortArrayInt32, nil)},
+		S:      SymArrayInt32{C.boolector_const_array(s.btor, s.sortArrayInt32, C.boolector_zero(s.btor, s.sortInt32))},
 	}
 }
 
