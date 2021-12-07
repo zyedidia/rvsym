@@ -7,7 +7,7 @@
 
 module ram
     #(
-        parameter SIZE = 2048
+        parameter SIZE = 1
     )
     (
         input logic clk,

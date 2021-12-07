@@ -15,6 +15,7 @@ type Memory struct {
 	rdmem *Memory
 	mem   map[int32]smt.Int32
 	arrs  []smt.ArrayInt32
+	valid map[int32]struct{}
 }
 
 // NewMemory creates a new memory. The rdmem argument provides an existing
@@ -23,14 +24,19 @@ type Memory struct {
 // be read when copying an address space.
 func NewMemory(rdmem *Memory) *Memory {
 	var arrs []smt.ArrayInt32
+	valid := make(map[int32]struct{})
 	if rdmem != nil {
 		arrs = make([]smt.ArrayInt32, len(rdmem.arrs))
 		copy(arrs, rdmem.arrs)
+		for k, v := range rdmem.valid {
+			valid[k] = v
+		}
 	}
 	return &Memory{
 		rdmem: rdmem,
 		mem:   make(map[int32]smt.Int32),
 		arrs:  arrs,
+		valid: valid,
 	}
 }
 
@@ -86,24 +92,33 @@ func (m *Memory) keys() map[int32]struct{} {
 	return keys
 }
 
-// returns the value at idx, or false if it does not exist
-func (m *Memory) read(idx smt.Int32, s *smt.Solver) (smt.Int32, bool) {
+func (m *Memory) readmem(idx int32) (smt.Int32, bool) {
 	if m == nil {
 		return smt.Int32{}, false
 	}
+	if v, ok := m.mem[idx]; ok {
+		return v, true
+	}
+	return m.rdmem.readmem(idx)
+}
+
+// returns the value at idx, or false if it does not exist
+func (m *Memory) read(idx smt.Int32, s *smt.Solver) (smt.Int32, bool) {
 	for _, a := range m.arrs {
 		if a.InBounds(idx, s) {
+			if idx.Concrete() {
+				if _, ok := m.valid[idx.C]; ok {
+					return m.readmem(idx.C)
+				}
+			}
+
 			return a.Read(idx, s), true
 		}
 	}
 	if !idx.Concrete() {
 		return smt.Int32{}, false
 	}
-	if v, ok := m.mem[idx.C]; ok {
-		return v, true
-	}
-	v, ok := m.rdmem.read(idx, s)
-	return v, ok
+	return m.readmem(idx.C)
 }
 
 // identical to read but returns the zero value of smt.Int32 if not found
@@ -118,6 +133,20 @@ func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
 
 	for i := range m.arrs {
 		if m.arrs[i].InBounds(idx, s) {
+			if idx.Concrete() {
+				m.mem[idx.C] = val
+				m.valid[idx.C] = struct{}{}
+				// even if the address is concrete we still need to perform a
+				// symbolic write beceause in the future there may be a read
+				// with a symbolic address
+			} else {
+				for k := range m.valid {
+					if m.arrs[i].InBounds(smt.Int32{C: k}, s) {
+						delete(m.valid, k)
+					}
+				}
+			}
+
 			m.arrs[i].Write(idx, val, s)
 			return true
 		}
