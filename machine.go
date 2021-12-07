@@ -454,7 +454,6 @@ func (m *Machine) Checkpoint(cond smt.Bool) *Checkpoint {
 
 func (m *Machine) AddCond(cond smt.Bool, checksat bool, s *smt.Solver) {
 	s.Assert(cond)
-	fmt.Println(cond.S)
 
 	if checksat {
 		res := s.Check(false)

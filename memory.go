@@ -134,10 +134,13 @@ func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
 	for i := range m.arrs {
 		if m.arrs[i].InBounds(idx, s) {
 			if idx.Concrete() {
-				m.mem[idx.C] = val
-				if _, ok := m.valid[idx.C]; ok {
-					return true
+				if _, ok := m.valid[idx.C]; ok && val.Concrete() {
+					v := m.readz(idx, s)
+					if v.Concrete() && val.C == v.C {
+						return true
+					}
 				}
+				m.mem[idx.C] = val
 				m.valid[idx.C] = struct{}{}
 				// even if the address is concrete we still need to perform a
 				// symbolic write beceause in the future there may be a read

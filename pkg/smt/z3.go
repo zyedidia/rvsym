@@ -278,5 +278,10 @@ func (a SymArrayInt32) Select(idx SymInt32, s *Solver) SymInt32 {
 }
 
 func (a SymArrayInt32) Store(idx SymInt32, val SymInt32, s *Solver) SymArrayInt32 {
+	// arr := s.ctx.FreshConst("", s.sortArrayInt32).(z3.Array)
+	// s.Assert(Bool{S: SymBool{arr.Eq(a.array.Store(idx.BV, val.BV))}})
+	// return SymArrayInt32{arr}
 	return SymArrayInt32{a.array.Store(idx.BV, val.BV)}
+	// s.Assert(Bool{S: SymBool{a.array.Select(idx.BV).(z3.BV).Eq(val.BV)}})
+	return a
 }

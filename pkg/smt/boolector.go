@@ -8,6 +8,7 @@ package smt
 //#include "boolector.h"
 import "C"
 import (
+	"runtime"
 	"strconv"
 )
 
@@ -46,10 +47,16 @@ func NewSolver() *Solver {
 	C.boolector_set_opt(btor, C.BTOR_OPT_OUTPUT_NUMBER_FORMAT, C.BTOR_OUTPUT_BASE_DEC)
 	C.boolector_set_opt(btor, C.BTOR_OPT_INCREMENTAL, 1)
 
-	return &Solver{
+	s := &Solver{
 		btor:  btor,
 		sorts: initSorts(btor),
 	}
+
+	runtime.SetFinalizer(s, func(s *Solver) {
+		C.boolector_release_all(s.btor)
+		C.boolector_delete(s.btor)
+	})
+	return s
 }
 
 func (s *Solver) Push() {
@@ -61,7 +68,11 @@ func (s *Solver) Pop() {
 }
 
 func (s *Solver) Assert(b Bool) {
-	C.boolector_assert(s.btor, b.Sym(s).BV)
+	n := b.Sym(s).BV
+	C.boolector_assert(s.btor, n)
+	// fmt.Print("assert: ")
+	// C.boolector_dump_btor_node(s.btor, C.stdout, n)
+	// fmt.Println()
 }
 
 func (s *Solver) Check(model bool) CheckResult {
@@ -89,7 +100,10 @@ func (m Model) Eval(a Int32) int32 {
 	if a.Concrete() {
 		return a.C
 	}
-	i, err := strconv.Atoi(C.GoString(C.boolector_bv_assignment(m.btor, a.S.BV)))
+	s := C.boolector_bv_assignment(m.btor, a.S.BV)
+	gos := C.GoString(s)
+	C.boolector_free_bv_assignment(m.btor, s)
+	i, err := strconv.Atoi(gos)
 
 	if err != nil {
 		panic(err)
@@ -285,5 +299,8 @@ func (a SymArrayInt32) Select(idx SymInt32, s *Solver) SymInt32 {
 }
 
 func (a SymArrayInt32) Store(idx SymInt32, val SymInt32, s *Solver) SymArrayInt32 {
+	// arr := C.boolector_array(s.btor, s.sortArrayInt32, nil)
+	// s.Assert(Bool{S: SymBool{C.boolector_eq(s.btor, arr, C.boolector_write(s.btor, a.array, idx.BV, val.BV))}})
+	// return SymArrayInt32{arr}
 	return SymArrayInt32{C.boolector_write(s.btor, a.array, idx.BV, val.BV)}
 }

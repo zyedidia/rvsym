@@ -12,6 +12,8 @@ int main() {
     for (int i = 0; i < 100; i++) {
         array[i] = i;
     }
+    array[10] = 50;
+    array[50] = 10;
 
     if (array[addr] == 50) {
         rvsym_exit();
