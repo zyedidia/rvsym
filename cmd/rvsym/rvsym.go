@@ -40,6 +40,11 @@ func main() {
 		os.Exit(0)
 	}
 
+	if opts.Verbose {
+		logger := log.New(os.Stdout, "INFO: ", 0)
+		rvsym.SetLogger(logger)
+	}
+
 	if len(args) <= 0 || opts.Help {
 		flagparser.WriteHelp(os.Stdout)
 		os.Exit(0)
