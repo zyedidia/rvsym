@@ -54,13 +54,13 @@ const (
 )
 
 const (
-	SymSymbolicRegs = iota
+	SymElapseNs = iota
 	SymFail
 	SymPrint
 	SymExit
 	SymQuietExit
 	SymMarkBytes
-	SymDump
+	SymMarkOutput
 	SymMarkArray
 )
 

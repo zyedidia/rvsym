@@ -32,11 +32,35 @@ func (a Int32) And(b Int32, s *Solver) Int32 {
 	if a.Concrete() && b.Concrete() {
 		return Int32{C: a.C & b.C}
 	}
+	if a.Concrete() && uint32(a.C) == 0xffffffff {
+		return b
+	}
+	if b.Concrete() && uint32(b.C) == 0xffffffff {
+		return a
+	}
+	if a.Concrete() && uint32(a.C) == 0 {
+		return a
+	}
+	if b.Concrete() && uint32(b.C) == 0 {
+		return b
+	}
 	return Int32{S: a.Sym(s).And(b.Sym(s), s)}
 }
 func (a Int32) Or(b Int32, s *Solver) Int32 {
 	if a.Concrete() && b.Concrete() {
 		return Int32{C: a.C | b.C}
+	}
+	if a.Concrete() && a.C == 0 {
+		return b
+	}
+	if b.Concrete() && b.C == 0 {
+		return a
+	}
+	if a.Concrete() && uint32(a.C) == 0xffffffff {
+		return a
+	}
+	if b.Concrete() && uint32(b.C) == 0xffffffff {
+		return b
 	}
 	return Int32{S: a.Sym(s).Or(b.Sym(s), s)}
 }
@@ -50,17 +74,35 @@ func (a Int32) Sll(b Int32, s *Solver) Int32 {
 	if a.Concrete() && b.Concrete() {
 		return Int32{C: a.C << b.C}
 	}
+	if a.Concrete() && a.C == 0 {
+		return Int32{C: 0}
+	}
+	if b.Concrete() && b.C == 0 {
+		return a
+	}
 	return Int32{S: a.Sym(s).Sll(b.Sym(s), s)}
 }
 func (a Int32) Srl(b Int32, s *Solver) Int32 {
 	if a.Concrete() && b.Concrete() {
 		return Int32{C: int32(uint32(a.C) >> uint32(b.C))}
 	}
+	if a.Concrete() && a.C == 0 {
+		return Int32{C: 0}
+	}
+	if b.Concrete() && b.C == 0 {
+		return a
+	}
 	return Int32{S: a.Sym(s).Srl(b.Sym(s), s)}
 }
 func (a Int32) Sra(b Int32, s *Solver) Int32 {
 	if a.Concrete() && b.Concrete() {
 		return Int32{C: a.C >> b.C}
+	}
+	if a.Concrete() && a.C == 0 {
+		return Int32{C: 0}
+	}
+	if b.Concrete() && b.C == 0 {
+		return a
 	}
 	return Int32{S: a.Sym(s).Sra(b.Sym(s), s)}
 }

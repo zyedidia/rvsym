@@ -3,6 +3,8 @@ package rvsym
 import (
 	"bytes"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/zyedidia/rvsym/bits"
 	"github.com/zyedidia/rvsym/pkg/smt"
@@ -12,10 +14,12 @@ type Machine struct {
 	pc   int32
 	regs []smt.Int32
 	mem  *Memory
+	time time.Duration
 
 	Status Status
 
 	symvals []SymVal
+	outputs []Output
 }
 
 type Branch struct {
@@ -136,6 +140,12 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 		} else {
 			fmt.Println(arg.C)
 		}
+	case SymElapseNs:
+		if arg, ok := mustconc(m.regs[11], "time elapsed is symbolic"); !ok {
+			return
+		} else {
+			m.time += time.Nanosecond * time.Duration(arg)
+		}
 	case SymFail:
 		m.exit(ExitFail)
 	case SymExit:
@@ -152,6 +162,31 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 			return
 		}
 		m.mem.AddArray(s, ptr/4, (nbytes+3)/4)
+	case SymMarkOutput:
+		var ptr, nbytes, nameptr uint32
+		var ok bool
+		if ptr, ok = mustconc(m.regs[11], "value address is symbolic"); !ok {
+			return
+		}
+		if nbytes, ok = mustconc(m.regs[12], "value size is symbolic"); !ok {
+			return
+		}
+		if nameptr, ok = mustconc(m.regs[13], "value name address is symbolic"); !ok {
+			return
+		}
+		log.Printf("Marking output: %d bytes at 0x%x\n", nbytes, ptr)
+
+		name, err := m.readString(nameptr, nbytes, s)
+		if err != nil {
+			m.err(err)
+			return
+		}
+
+		m.outputs = append(m.outputs, Output{
+			base: ptr,
+			size: nbytes,
+			name: name,
+		})
 	case SymMarkBytes:
 		var ptr, nbytes, nameptr uint32
 		var ok bool
@@ -164,6 +199,7 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 		if nameptr, ok = mustconc(m.regs[13], "value name address is symbolic"); !ok {
 			return
 		}
+		log.Printf("Marking symbolic value: %d bytes at 0x%x\n", nbytes, ptr)
 
 		name, err := m.readString(nameptr, nbytes, s)
 		if err != nil {
@@ -302,6 +338,15 @@ func (m *Machine) load(insn uint32, s *smt.Solver) {
 	imm := extractImm(insn, ImmTypeI)
 	addr := m.regs[rs1(insn)].Add(smt.Int32{C: imm}, s)
 
+	if addr.Concrete() {
+		addrc := uint32(addr.C)
+		for _, o := range m.outputs {
+			if addrc >= o.base && addrc < o.base+o.size {
+				log.Printf("read from '%s' 0x%x at time %v\n", o.name, addrc, m.time)
+			}
+		}
+	}
+
 	var rdval smt.Int32
 	var valid bool
 	switch funct3(insn) {
@@ -335,6 +380,15 @@ func (m *Machine) store(insn uint32, s *smt.Solver) {
 	addr := m.regs[rs1(insn)].Add(smt.Int32{C: imm}, s)
 	stval := m.regs[rs2(insn)]
 
+	if addr.Concrete() {
+		addrc := uint32(addr.C)
+		for _, o := range m.outputs {
+			if addrc >= o.base && addrc < o.base+o.size {
+				log.Printf("write %v to '%s' 0x%x at time %v\n", stval.S, o.name, addrc, m.time)
+			}
+		}
+	}
+
 	switch funct3(insn) {
 	case ExtByte:
 		m.mem.Write8(addr, stval, s)
@@ -343,6 +397,12 @@ func (m *Machine) store(insn uint32, s *smt.Solver) {
 	case ExtWord:
 		m.mem.Write32(addr, stval, s)
 	}
+}
+
+type Output struct {
+	base uint32
+	size uint32
+	name string
 }
 
 type SymVal struct {
@@ -355,6 +415,7 @@ type Checkpoint struct {
 	regs []smt.Int32
 	mem  *Memory
 	vals []SymVal
+	outs []Output
 
 	cond smt.Bool
 }
@@ -366,6 +427,7 @@ func Restore(cp *Checkpoint, s *smt.Solver) *Machine {
 		regs:    cp.regs,
 		mem:     cp.mem,
 		symvals: cp.vals,
+		outputs: cp.outs,
 	}
 }
 
@@ -376,10 +438,12 @@ func (m *Machine) Checkpoint(cond smt.Bool) *Checkpoint {
 		vals: make([]SymVal, len(m.symvals)),
 		pc:   m.pc,
 		cond: cond,
+		outs: make([]Output, len(m.outputs)),
 	}
 
 	copy(cp.regs, m.regs)
 	copy(cp.vals, m.symvals)
+	copy(cp.outs, m.outputs)
 	// duplicate memory because current m.mem must become read-only
 	m.mem = NewMemory(m.mem)
 
