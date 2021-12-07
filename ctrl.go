@@ -55,11 +55,12 @@ const (
 const (
 	SymSymbolicRegs = iota
 	SymFail
-	SymSymbolicReg
+	SymPrint
 	SymExit
 	SymQuietExit
 	SymMarkNBytes
 	SymDump
+	SymMarkArray
 	SymMarkNSecret
 )
 
@@ -70,6 +71,8 @@ const (
 	ExitNormal
 	ExitQuiet
 	ExitFail
+	ExitMem
+	ExitUnsat
 )
 
 func (e ExitStatus) String() string {
@@ -80,6 +83,10 @@ func (e ExitStatus) String() string {
 		return "exit"
 	case ExitFail:
 		return "failure"
+	case ExitUnsat:
+		return "unsat"
+	case ExitMem:
+		return "memory failure"
 	}
 	return "quiet"
 }

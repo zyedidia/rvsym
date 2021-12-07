@@ -1,6 +1,2 @@
-github.com/zyedidia/go-z3 v0.0.0-20211106223131-fee76f63e4d6 h1:0BCv/sC3LSeshJ5c2m92ppIhpM7GF45dFGdmT2cDgac=
-github.com/zyedidia/go-z3 v0.0.0-20211106223131-fee76f63e4d6/go.mod h1:VhVgcXc/joVO9DrZcCZOK8mfbs5zuEJ5w9luDMJ7CRU=
-github.com/zyedidia/go-z3 v0.0.0-20211107055505-39ea7d746c0b h1:FpPrMVxGth/R3ZMaD++CiTJeOODuaCVjPy+N0DmjfSw=
-github.com/zyedidia/go-z3 v0.0.0-20211107055505-39ea7d746c0b/go.mod h1:VhVgcXc/joVO9DrZcCZOK8mfbs5zuEJ5w9luDMJ7CRU=
-github.com/zyedidia/go-z3 v0.0.0-20211114222309-7664a68c2ac6 h1:/KbuZBKqQB3585zWjjVLoZk96V4jsSbdHmThL96t4Is=
-github.com/zyedidia/go-z3 v0.0.0-20211114222309-7664a68c2ac6/go.mod h1:VhVgcXc/joVO9DrZcCZOK8mfbs5zuEJ5w9luDMJ7CRU=
+github.com/go-errors/errors v1.4.1 h1:IvVlgbzSsaUNudsw5dcXSzF3EWyXTi5XrAdngnuhRyg=
+github.com/go-errors/errors v1.4.1/go.mod h1:sIVyrIiJhuEF+Pj9Ebtd6P/rEYROXFi3BopGUQ5a5Og=

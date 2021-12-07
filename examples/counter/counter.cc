@@ -4,7 +4,7 @@
 #include <backends/cxxrtl/cxxrtl.h>
 
 #include "rvsym.h"
-#include "counter.hh"
+#include "counter.cxx"
 
 uint32_t eval_one_cycle(cxxrtl_design::p_counter& counter, uint32_t current) {
     counter.p_q__reg.set<uint32_t>(current);
@@ -29,8 +29,8 @@ int main() {
     uint32_t result;
     rvsym_mark_bytes(&result, 4, "result");
 
-    rvsym_assume(initial > 10000);
-    rvsym_assume(result <= 10000);
+    rvsym_assume(initial <= 10000);
+    rvsym_assume(result > 10000);
 
     uint32_t next_count = eval_one_cycle(counter, initial);
 

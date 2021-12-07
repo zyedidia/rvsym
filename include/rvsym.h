@@ -41,8 +41,8 @@ static inline void rvsym_mark_regs_symbolic() {
     symcall_0(RVSYM_SYMBOLIC_REGS);
 }
 
-static inline void rvsym_mark_reg_symbolic(int reg) {
-    symcall_1(RVSYM_SYMBOLIC_REG, reg);
+static inline void rvsym_print(int val) {
+    symcall_1(RVSYM_PRINT, val);
 }
 
 static inline void rvsym_fail() {
@@ -53,8 +53,18 @@ static inline void rvsym_dump() {
     symcall_0(RVSYM_DUMP);
 }
 
-#define rvsym_assume(x)          \
-    do {                         \
-        if (!(x))                \
+static inline void rvsym_mark_array(volatile void* p, uint32_t nbytes, const char* name) {
+    symcall_3(RVSYM_MARK_ARRAY, (uintptr_t) p, nbytes, (uintptr_t) name);
+}
+
+#define rvsym_assert(x)         \
+    do {                        \
+        if (!(x))               \
+            rvsym_fail();       \
+    } while (0)
+
+#define rvsym_assume(x)         \
+    do {                        \
+        if (!(x))               \
             rvsym_quiet_exit(); \
     } while (0)
