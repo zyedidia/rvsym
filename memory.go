@@ -1,7 +1,6 @@
 package rvsym
 
 import (
-	"reflect"
 	"sort"
 
 	"github.com/zyedidia/rvsym/pkg/smt"
@@ -131,7 +130,6 @@ func (m *Memory) readz(idx smt.Int32, s *smt.Solver) smt.Int32 {
 // attempt to write val at idx; returns false if the access is out of bounds
 // (only possible when using a symbolic address).
 func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
-
 	for i := range m.arrs {
 		if m.arrs[i].InBounds(idx, s) {
 			if idx.Concrete() {
@@ -139,14 +137,12 @@ func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
 					v := m.readz(idx, s)
 					if val.Concrete() && v.Concrete() && val.C == v.C {
 						return true
-					} else if !val.Concrete() && !v.Concrete() && reflect.DeepEqual(v.S, val.S) {
-						return true
 					}
 				}
 				m.mem[idx.C] = val
 				m.valid[idx.C] = struct{}{}
 				// even if the address is concrete we still need to perform a
-				// symbolic write beceause in the future there may be a read
+				// symbolic write because in the future there may be a read
 				// with a symbolic address
 			} else {
 				for k := range m.valid {
