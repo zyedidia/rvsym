@@ -9,6 +9,7 @@ import (
 type Solver struct {
 	ctx    *z3.Context
 	solver *z3.Solver
+	stack  *stack
 
 	sorts
 }
@@ -43,24 +44,35 @@ func NewSolver() *Solver {
 		ctx:    ctx,
 		solver: z3.NewSolver(ctx),
 		sorts:  initSorts(ctx),
+		stack:  newStack(),
 	}
 }
 
 func (s *Solver) Push() {
 	s.solver.Push()
+	s.stack.push()
 }
 
 func (s *Solver) Pop() {
 	s.solver.Pop()
+	s.stack.pop()
 }
 
 func (s *Solver) Assert(b Bool) {
 	s.solver.Assert(b.Sym(s).Bool)
+	s.stack.add(b)
 }
 
 func (s *Solver) Check(model bool) CheckResult {
 	sat, err := s.solver.Check()
 	if sat && err == nil {
+		// 		if model {
+		// 			fmt.Println("(set-option :produce-models true)")
+		// 			fmt.Println(s.solver)
+		// 			fmt.Println(`(check-sat)
+		// (get-model)
+		// (exit)`)
+		// 		}
 		return Sat
 	} else if !sat && err == nil {
 		return Unsat
@@ -282,6 +294,7 @@ func (a SymArrayInt32) Store(idx SymInt32, val SymInt32, s *Solver) SymArrayInt3
 	// s.Assert(Bool{S: SymBool{arr.Eq(a.array.Store(idx.BV, val.BV))}})
 	// return SymArrayInt32{arr}
 	return SymArrayInt32{a.array.Store(idx.BV, val.BV)}
+	// return SymArrayInt32{s.ctx.Simplify(a.array.Store(idx.BV, val.BV), nil).(z3.Array)}
 	// s.Assert(Bool{S: SymBool{a.array.Select(idx.BV).(z3.BV).Eq(val.BV)}})
 	return a
 }

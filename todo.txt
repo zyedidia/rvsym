@@ -6,3 +6,4 @@ array access annotation?
 release resources in boolector [x]
 better ctrl-c support [x]
 summaries [x]
+keep stack of assertions and list for each path

@@ -1,5 +1,7 @@
 package smt
 
+import "reflect"
+
 type Int32 struct {
 	C int32
 	S SymInt32
@@ -195,6 +197,9 @@ func (a Int32) NEqz(s *Solver) Bool {
 func (a Int32) Eqb(b Int32, s *Solver) Bool {
 	if a.Concrete() && b.Concrete() {
 		return Bool{C: a.C == b.C}
+	}
+	if reflect.DeepEqual(a.S, b.S) {
+		return Bool{C: true}
 	}
 	return Bool{S: a.Sym(s).Eqb(b.Sym(s), s)}
 }

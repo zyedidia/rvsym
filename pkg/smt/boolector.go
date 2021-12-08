@@ -13,7 +13,8 @@ import (
 )
 
 type Solver struct {
-	btor *C.Btor
+	btor  *C.Btor
+	stack *stack
 
 	sorts
 }
@@ -50,6 +51,7 @@ func NewSolver() *Solver {
 	s := &Solver{
 		btor:  btor,
 		sorts: initSorts(btor),
+		stack: newStack(),
 	}
 
 	runtime.SetFinalizer(s, func(s *Solver) {
@@ -62,18 +64,21 @@ func NewSolver() *Solver {
 func (s *Solver) Push() {
 	// fmt.Println("push")
 	C.boolector_push(s.btor, 1)
+	s.stack.push()
 }
 
 func (s *Solver) Pop() {
 	// fmt.Println("pop")
 	C.boolector_pop(s.btor, 1)
+	s.stack.pop()
 }
 
 func (s *Solver) Assert(b Bool) {
 	n := b.Sym(s).BV
-	// fmt.Print("assert: ")
+	// C.boolector_dump_smt2_node(s.btor, C.stdout, n)
 	// C.fflush(C.stdout)
 	// fmt.Println()
+	s.stack.add(b)
 	C.boolector_assert(s.btor, n)
 }
 
@@ -85,10 +90,19 @@ func (s *Solver) Check(model bool) CheckResult {
 	}
 	// C.boolector_dump_smt2(s.btor, C.stdout)
 	// C.fflush(C.stdout)
+	// fmt.Println()
 	result := C.boolector_sat(s.btor)
 	// fmt.Println("check", result)
 	switch result {
 	case C.BOOLECTOR_SAT:
+		// if model {
+		// 	for _, e := range s.stack.entries {
+		// 		fmt.Print("(assert ")
+		// 		C.boolector_dump_smt2_node(s.btor, C.stdout, e.S.BV)
+		// 		C.fflush(C.stdout)
+		// 		fmt.Print(")\n")
+		// 	}
+		// }
 		return Sat
 	case C.BOOLECTOR_UNSAT:
 		return Unsat

@@ -1,6 +1,7 @@
 package rvsym
 
 import (
+	"reflect"
 	"sort"
 
 	"github.com/zyedidia/rvsym/pkg/smt"
@@ -134,9 +135,11 @@ func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
 	for i := range m.arrs {
 		if m.arrs[i].InBounds(idx, s) {
 			if idx.Concrete() {
-				if _, ok := m.valid[idx.C]; ok && val.Concrete() {
+				if _, ok := m.valid[idx.C]; ok {
 					v := m.readz(idx, s)
-					if v.Concrete() && val.C == v.C {
+					if val.Concrete() && v.Concrete() && val.C == v.C {
+						return true
+					} else if !val.Concrete() && !v.Concrete() && reflect.DeepEqual(v.S, val.S) {
 						return true
 					}
 				}
