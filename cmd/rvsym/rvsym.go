@@ -89,6 +89,10 @@ func main() {
 			last = eng.NumTestCases()
 			tc := eng.TestCases()[last-1]
 
+			if opts.Dump {
+				fmt.Println(tc.Dump)
+			}
+
 			str := fmt.Sprintf("0x%x", uint32(tc.Pc))
 			if opts.Elf != "" {
 				pos, err := converter.Lookup(uint32(tc.Pc))

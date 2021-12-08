@@ -3,6 +3,7 @@ package main
 var opts struct {
 	Time    *int   `long:"time" description:"Stop execution after a given amount of seconds"`
 	Summary bool   `short:"s" long:"summary" description:"Show execution summary"`
+	Dump    bool   `long:"dump" description:"Dump smt2 requests for generated test cases"`
 	Elf     string `long:"elf" description:"ELF debug information file"`
 	Entry   uint32 `long:"entry" default:"4096" description:"Program start address"`
 	Profile string `short:"p" long:"profile" description:"Dump profiling information to file"`

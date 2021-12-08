@@ -478,10 +478,12 @@ func (m *Machine) TestCase(s *smt.Solver) (TestCase, bool) {
 			Val:  model.Eval(v.val),
 		}
 	}
+	dump := s.String()
 	return TestCase{
 		Assignments: vars,
 		Pc:          m.pc,
 		Exit:        m.Status.Exit,
 		Err:         m.Status.Err,
+		Dump:        dump,
 	}, true
 }

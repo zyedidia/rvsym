@@ -15,6 +15,7 @@ type TestCase struct {
 	Exit        ExitStatus
 	Pc          int32
 	Err         error
+	Dump        string
 }
 
 func (tc TestCase) String(hex bool) string {

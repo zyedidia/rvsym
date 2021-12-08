@@ -111,6 +111,10 @@ func (s *Solver) Check(model bool) CheckResult {
 	}
 }
 
+func (s *Solver) String() string {
+	return "(TODO)"
+}
+
 func (s *Solver) Model() Model {
 	return Model{s.btor}
 }
@@ -322,4 +326,10 @@ func (a SymArrayInt32) Store(idx SymInt32, val SymInt32, s *Solver) SymArrayInt3
 	// s.Assert(Bool{S: SymBool{C.boolector_eq(s.btor, arr, C.boolector_write(s.btor, a.array, idx.BV, val.BV))}})
 	// return SymArrayInt32{arr}
 	return SymArrayInt32{C.boolector_write(s.btor, a.array, idx.BV, val.BV)}
+}
+
+func (a SymArrayInt32) StoreWithSelect(idx SymInt32, val SymInt32, s *Solver) SymArrayInt32 {
+	s.Assert(Bool{S: SymBool{C.boolector_eq(s.btor, val.BV, C.boolector_read(s.btor, a.array, idx.BV))}})
+	// s.Assert(Bool{S: SymBool{a.array.Select(idx.BV).(z3.BV).Eq(val.BV)}})
+	return a
 }

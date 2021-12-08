@@ -196,6 +196,9 @@ func (a Int32) Eqb(b Int32, s *Solver) Bool {
 	if a.Concrete() && b.Concrete() {
 		return Bool{C: a.C == b.C}
 	}
+	// if reflect.DeepEqual(a.S, b.S) {
+	// 	return Bool{C: true}
+	// }
 	return Bool{S: a.Sym(s).Eqb(b.Sym(s), s)}
 }
 func (a Int32) NEqb(b Int32, s *Solver) Bool {
@@ -384,4 +387,8 @@ func (a ArrayInt32) Read(idx Int32, s *Solver) Int32 {
 
 func (a *ArrayInt32) Write(idx, val Int32, s *Solver) {
 	a.S = a.S.Store(idx.Sym(s), val.Sym(s), s)
+}
+
+func (a *ArrayInt32) WriteInitial(idx, val Int32, s *Solver) {
+	a.S = a.S.StoreWithSelect(idx.Sym(s), val.Sym(s), s)
 }

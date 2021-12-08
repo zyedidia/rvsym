@@ -51,6 +51,7 @@ func (m *Memory) AddArray(s *smt.Solver, base uint32, length uint32) {
 	vals := make([]tmpval, 0, length)
 	for i := base; i < base+length; i++ {
 		v, ok := m.mem[int32(i)]
+		m.valid[int32(i)] = struct{}{}
 		if ok {
 			vals = append(vals, tmpval{
 				idx: i,
@@ -60,8 +61,15 @@ func (m *Memory) AddArray(s *smt.Solver, base uint32, length uint32) {
 	}
 	m.arrs = append(m.arrs, s.AnyArrayInt32(base, length))
 	for _, v := range vals {
-		m.write(smt.Int32{C: int32(v.idx)}, v.val, s)
+		m.writeInit(smt.Int32{C: int32(v.idx)}, v.val, s)
 	}
+}
+
+func (m *Memory) writeInit(idx, val smt.Int32, s *smt.Solver) bool {
+	return m.writeVal(idx, val, s, true)
+}
+func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
+	return m.writeVal(idx, val, s, false)
 }
 
 // Keys returns all concrete addresses with values in sorted order.
@@ -129,12 +137,17 @@ func (m *Memory) readz(idx smt.Int32, s *smt.Solver) smt.Int32 {
 
 // attempt to write val at idx; returns false if the access is out of bounds
 // (only possible when using a symbolic address).
-func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
+func (m *Memory) writeVal(idx, val smt.Int32, s *smt.Solver, init bool) bool {
 	for i := range m.arrs {
 		if m.arrs[i].InBounds(idx, s) {
 			if idx.Concrete() {
 				if _, ok := m.valid[idx.C]; ok {
-					v := m.readz(idx, s)
+					v, ok := m.read(idx, s)
+					if !ok || init {
+						m.mem[idx.C] = val
+						m.arrs[i].WriteInitial(idx, val, s)
+						return true
+					}
 					if val.Concrete() && v.Concrete() && val.C == v.C {
 						return true
 					}

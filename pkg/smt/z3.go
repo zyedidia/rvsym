@@ -3,6 +3,9 @@
 package smt
 
 import (
+	"bytes"
+	"fmt"
+
 	"github.com/zyedidia/rvsym/pkg/smt/z3"
 )
 
@@ -66,18 +69,19 @@ func (s *Solver) Assert(b Bool) {
 func (s *Solver) Check(model bool) CheckResult {
 	sat, err := s.solver.Check()
 	if sat && err == nil {
-		// 		if model {
-		// 			fmt.Println("(set-option :produce-models true)")
-		// 			fmt.Println(s.solver)
-		// 			fmt.Println(`(check-sat)
-		// (get-model)
-		// (exit)`)
-		// 		}
 		return Sat
 	} else if !sat && err == nil {
 		return Unsat
 	}
 	return Unknown
+}
+
+func (s *Solver) String() string {
+	buf := &bytes.Buffer{}
+	fmt.Fprintln(buf, "(set-option :produce-models true)")
+	fmt.Fprintln(buf, s.solver)
+	fmt.Fprintln(buf, "(check-sat)\n(get-model)\n(exit)")
+	return buf.String()
 }
 
 func (s *Solver) Model() Model {
@@ -296,5 +300,10 @@ func (a SymArrayInt32) Store(idx SymInt32, val SymInt32, s *Solver) SymArrayInt3
 	return SymArrayInt32{a.array.Store(idx.BV, val.BV)}
 	// return SymArrayInt32{s.ctx.Simplify(a.array.Store(idx.BV, val.BV), nil).(z3.Array)}
 	// s.Assert(Bool{S: SymBool{a.array.Select(idx.BV).(z3.BV).Eq(val.BV)}})
+	// return a
+}
+
+func (a SymArrayInt32) StoreWithSelect(idx SymInt32, val SymInt32, s *Solver) SymArrayInt32 {
+	s.Assert(Bool{S: SymBool{a.array.Select(idx.BV).(z3.BV).Eq(val.BV)}})
 	return a
 }
