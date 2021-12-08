@@ -66,8 +66,13 @@ func (e *Engine) Step() bool {
 		var cond, alt smt.Bool
 		var condpc, altpc int32
 
-		cond, alt = br.cond, br.cond.Not(e.smt)
-		condpc, altpc = br.pc, m.pc+4
+		if randbool() {
+			cond, alt = br.cond, br.cond.Not(e.smt)
+			condpc, altpc = br.pc, m.pc+4
+		} else {
+			alt, cond = br.cond, br.cond.Not(e.smt)
+			altpc, condpc = br.pc, m.pc+4
+		}
 
 		e.smt.Push()
 		e.smt.Assert(alt)
