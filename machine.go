@@ -34,6 +34,9 @@ type Checkpoint struct {
 	mem    *Memory
 	marked []Mark
 
+	stores []st.Int32
+	secretStores []st.Int32
+
 	cond z3.Bool
 }
 
@@ -86,12 +89,14 @@ func NewMachine(ctx *z3.Context, solver *z3.Solver, pc int32, mem *Memory) *Mach
 func Restore(cp *Checkpoint, ctx *z3.Context, solver *z3.Solver) *Machine {
 	solver.Assert(cp.cond)
 	return &Machine{
-		pc:     cp.pc,
-		regs:   cp.regs,
-		mem:    cp.mem,
-		marked: cp.marked,
-		ctx:    ctx,
-		solver: solver,
+		pc:     	cp.pc,
+		regs:   	cp.regs,
+		mem:    	cp.mem,
+		marked: 	cp.marked,
+		stores: 	cp.stores,
+		secretStores:	cp.secretStores,
+		ctx:    	ctx,
+		solver: 	solver,
 	}
 }
 
@@ -101,6 +106,9 @@ func (m *Machine) Checkpoint(cond z3.Bool) *Checkpoint {
 	cpmarked := make([]Mark, len(m.marked))
 	m.mem = NewMemory(m.mem)
 
+	cpstores := make([]st.Int32, len(m.stores))
+	cpsecretStores := make([]st.Int32, len(m.secretStores))
+
 	copy(cpregs, m.regs)
 	copy(cpmarked, m.marked)
 
@@ -109,6 +117,8 @@ func (m *Machine) Checkpoint(cond z3.Bool) *Checkpoint {
 		regs:   cpregs,
 		mem:    cpmem,
 		marked: cpmarked,
+		stores: cpstores,
+		secretStores: cpsecretStores,
 		pc:     m.pc,
 	}
 }
@@ -208,7 +218,6 @@ func (m *Machine) mark(val st.Int32, name string) {
 }
 
 func (m *Machine) symcall(insn uint32, sysnum int) {
-	fmt.Printf("sysnum: %d\n", sysnum);
 	switch sysnum {
 	case SymSymbolicRegs:
 		for i := range m.regs[1:] {
@@ -312,7 +321,6 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 	case SymDump:
 		fmt.Print(m.String())
 	case SymMarkNSecret:
-		fmt.Printf("Secret data marked\n")
 		ptr := m.regs[11]     // a1
 		nbytes := m.regs[12]  // a2
 		nameptr := m.regs[13] // a3
@@ -349,12 +357,6 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 			i32, _ := m.mem.Read32(st.Uint32{C: uint32(ptr.C+idx)}, m.solver)
 			i32.Secret = true
 			m.mem.Write32(st.Uint32{C: uint32(ptr.C+idx)}, i32, m.solver)
-
-			//m.secret(i32, fmt.Sprintf("%s[%d:%d]", name, idx, idx+3))
-
-			if i32.IsConcrete() {
-				fmt.Printf("Secret data: %d\n", i32.C)
-			}
 		}
 		left := nbytes.C % 4
 		for i := int32(0); i < left; i++ {
@@ -362,10 +364,8 @@ func (m *Machine) symcall(insn uint32, sysnum int) {
 			i32, _ := m.mem.Read8(st.Uint32{C: uint32(ptr.C+idx)}, m.solver)
 			i32.Secret = true
 			m.mem.Write8(st.Uint32{C: uint32(ptr.C+idx)}, i32, m.solver)
-			//m.secret(i32, fmt.Sprintf("%s[%d]", name, idx))
 		}
 	}
-	fmt.Printf("Exiting symcall\n");
 }
 
 func (m *Machine) rarith(insn uint32) {
@@ -479,45 +479,21 @@ func (m *Machine) load(insn uint32) {
 	imm := extractImm(insn, ImmI)
 	funct3 := GetBits(insn, 14, 12).Uint32()
 
-	/*
-	rsval := m.regs[rs1]
-
-	if !rsval.IsConcrete() {
-		fmt.Printf("concretizing load\n")
-		if c, ok := m.concretize(rsval); ok {
-			rsval = st.Int32{C: c}
-		} else {
-			return
-		}
-	}
-	*/
-	//addr := (st.Int32{C: (rsval.C) + int32(imm)}).ToUint32()
 	addr := m.regs[rs1].Add(st.Int32{C: int32(imm)}).ToUint32()
-	//cAddr, _ := m.concretize(addr.ToInt32())
-	//addr = st.Uint32{C: uint32(cAddr)}
-
-	//fmt.Print("CONCRETE load at ")
-	//fmt.Printf("%x\n", addr.C)
-
 
 	var rdval st.Int32
 	var valid bool
 	switch funct3 {
 	case ExtByte:
-		//fmt.Printf("load -- Read8\n")
 		rdval, valid = m.mem.Read8(addr, m.solver)
 	case ExtHalf:
 		rdval, valid = m.mem.Read16(addr, m.solver)
-		//fmt.Printf("load -- Read16\n")
 	case ExtWord:
 		rdval, valid = m.mem.Read32(addr, m.solver)
-		//fmt.Printf("load -- Read32\n")
 	case ExtByteU:
 		rdval, valid = m.mem.Read8u(addr, m.solver)
-		//fmt.Printf("load -- Read8u\n")
 	case ExtHalfU:
 		rdval, valid = m.mem.Read16u(addr, m.solver)
-		//fmt.Printf("load -- Read16u\n")
 	default:
 		m.Status.Err = fmt.Errorf("invalid load instruction")
 		return
@@ -541,34 +517,10 @@ func (m *Machine) store(insn uint32) {
 	imm := extractImm(insn, ImmS)
 	funct3 := GetBits(insn, 14, 12).Uint32()
 
-	//fmt.Printf("rs1: %d, rs2: %d\n", rs1, rs2);
-	//addr := m.regs[rs1].Add(st.Int32{C: int32(imm)}).ToUint32()
-
 	rsval := m.regs[rs1]
 	stval := m.regs[rs2]
 
-
 	addrsym := rsval.Add(st.Int32{C: int32(imm)})
-
-	/*
-	fmt.Print("INFO: store at ")
-	if addrsym.IsConcrete() {
-		fmt.Printf("%x\n", addrsym.C)
-	} else {
-		fmt.Printf("%v\n", addrsym.S)
-	}
-	*/
-
-	/*
-	if stval.Secret {
-		fmt.Printf("NOTE: rsval is secret!\n")
-	}
-	if stval.IsConcrete() {
-		fmt.Printf("Storing data: %d\n", stval.C)
-	} else {
-		fmt.Printf("Store is symbolic\n")
-	}
-	*/
 
 	loopLen := 0
 	if stval.Secret {
@@ -584,13 +536,9 @@ func (m *Machine) store(insn uint32) {
 		var a st.Int32
 		if stval.Secret {
 			a = m.stores[i]
-			//fmt.Printf("storing secret, checking symbolic addresses\n")
 		} else {
 			a = m.secretStores[i]
-			//fmt.Printf("storing symbolic, checking secret addresses\n")
 		}
-
-		//fmt.Printf("Checking secret addresses\n")
 
 		cond := a.Eq(addrsym)
 
@@ -598,6 +546,7 @@ func (m *Machine) store(insn uint32) {
 			m.solver.Push()
 			m.solver.Assert(cond.S)
 		}
+
 		if !cond.IsConcrete() || cond.C {
 			sat, err := m.solver.Check()
 			if sat && err == nil {
@@ -616,21 +565,19 @@ func (m *Machine) store(insn uint32) {
 
 				if !found {
 					m.foundAddrs = append(m.foundAddrs, addrsym)
-				model := m.solver.Model()
-				sameaddr := addrsym.Eval(model)
+					model := m.solver.Model()
+					sameaddr := addrsym.Eval(model)
 
-				fmt.Printf("Stores to same addresses %x\n", sameaddr)
-
-				secretCounter++
-				if secretCounter == secretMax {
-
-					m.Status.Err = fmt.Errorf("Stores to same addresses %x\n", sameaddr)
-					m.Status.Exit = ExitFail
-					return
-				}
+					secretCounter++
+					if secretCounter == secretMax {
+						m.Status.Err = fmt.Errorf("Stores to same addresses %x\n", sameaddr)
+						m.Status.Exit = ExitFail
+						return
+					}
 				}
 			}
 		}
+
 		if !cond.IsConcrete() {
 			m.solver.Pop()
 		}
@@ -638,65 +585,32 @@ func (m *Machine) store(insn uint32) {
 
 	addr := m.regs[rs1].Add(st.Int32{C: int32(imm)}).ToUint32()
 
-
-	if stval.Secret { // secretStores and stores are disjoint
-			  // because we don't want secret overwriting
-			  // secret stores to be an error
-		//addrsym.Secret = true
+	// Record silent / symbolic stores
+	if stval.Secret {
 		m.secretStores = append(m.secretStores, addrsym)
-		//m.secretStores = append(m.secretStores, addr)
 	} else if !stval.Secret && !stval.IsConcrete() {
 		m.stores = append(m.stores, addrsym)
-		//m.stores = append(m.stores, addr)
 	}
 
-
-
-
+	// Remove silent stores being overwritten
 	if !stval.Secret && stval.IsConcrete() {
 		for j := 0; j < len(m.secretStores); j++ {
 			addrSecret := m.secretStores[j]
-			if addrSecret.IsConcrete() {
-				if addrSecret.C == addrsym.C {
-					m.secretStores = append(m.secretStores[:j], m.secretStores[j+1:]...)
-					//fmt.Print("Removed secret address\n")
-					// Remove secret stores overwritten by non-secret, non-attacker controlled data
-				}
+			if addrSecret.IsConcrete() && addrsym.IsConcrete() && addrSecret.C == addrsym.C {
+				m.secretStores = append(m.secretStores[:j], m.secretStores[j+1:]...)
 			}
 		}
 	}
 
-	if !stval.IsConcrete() {
+	// Remove symbolic stores being overwritten
+	if !stval.Secret && stval.IsConcrete() {
 		for j := 0; j < len(m.stores); j++ {
 			addrSymbolic := m.stores[j]
-			if addrSymbolic.IsConcrete() {
-				if addrSymbolic.C == addrsym.C {
-					m.stores = append(m.stores[:j], m.stores[j+1:]...)
-					//fmt.Print("Removed symbolic address\n")
-					// Remove secret stores overwritten by non-secret, non-attacker controlled data
-				}
+			if addrSymbolic.IsConcrete() && addrsym.IsConcrete() && addrSymbolic.C == addrsym.C {
+				m.stores = append(m.stores[:j], m.stores[j+1:]...)
 			}
 		}
 	}
-
-	/*
-	if !rsval.IsConcrete() {
-		if c, ok := m.concretize(rsval); !ok {
-			return
-		} else {
-			rsval = st.Int32{C: c}
-		}
-	}
-	*/
-
-	//addr := (st.Int32{C: (rsval.C) + int32(imm)}).ToUint32()
-
-	//addr := m.regs[rs1].Add(st.Int32{C: int32(imm)}).ToUint32()
-	//cAddr, _ := m.concretize(addr.ToInt32())
-	//addr = st.Uint32{C: uint32(cAddr)}
-
-	//fmt.Print("CONCRETE store at ")
-	//fmt.Printf("%x\n", addr.C)
 
 	switch funct3 {
 	case ExtByte:
