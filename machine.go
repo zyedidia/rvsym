@@ -15,10 +15,11 @@ type Machine struct {
 	mem  *Memory
 	time time.Duration
 
-	Status Status
-
 	symvals []SymVal
 	outputs []Output
+	traces  []Trace
+
+	Status Status
 }
 
 type Branch struct {
@@ -54,9 +55,10 @@ func (m *Machine) exit(exit ExitStatus) {
 
 func NewMachine(pc int32, mem *Memory) *Machine {
 	return &Machine{
-		pc:   pc,
-		regs: make([]smt.Int32, 32),
-		mem:  mem,
+		pc:     pc,
+		regs:   make([]smt.Int32, 32),
+		mem:    mem,
+		traces: make([]Trace, 1),
 	}
 }
 
@@ -144,6 +146,20 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 			return
 		} else {
 			m.time += time.Nanosecond * time.Duration(arg)
+		}
+	case SymSnapshot:
+		m.regs[10] = smt.Int32{C: int32(len(m.traces) - 1)}
+	case SymTraceReset:
+		m.time = time.Duration(0)
+		m.traces = append(m.traces, Trace{})
+	case SymSnapshotEq:
+		s1 := m.regs[11].C
+		s2 := m.regs[12].C
+		eq := m.traces[s1].Eq(m.traces[s2])
+		if eq {
+			m.regs[10] = smt.Int32{C: 1}
+		} else {
+			m.regs[10] = smt.Int32{C: 0}
 		}
 	case SymFail:
 		m.exit(ExitFail)
@@ -340,15 +356,6 @@ func (m *Machine) load(insn uint32, s *smt.Solver) {
 	imm := extractImm(insn, ImmTypeI)
 	addr := m.regs[rs1(insn)].Add(smt.Int32{C: imm}, s)
 
-	if addr.Concrete() {
-		addrc := uint32(addr.C)
-		for _, o := range m.outputs {
-			if addrc >= o.base && addrc < o.base+o.size {
-				logger.Printf("read from '%s' 0x%x at time %v\n", o.name, addrc, m.time)
-			}
-		}
-	}
-
 	var rdval smt.Int32
 	var valid bool
 	switch funct3(insn) {
@@ -386,7 +393,12 @@ func (m *Machine) store(insn uint32, s *smt.Solver) {
 		addrc := uint32(addr.C)
 		for _, o := range m.outputs {
 			if addrc >= o.base && addrc < o.base+o.size {
-				logger.Printf("write %v to '%s' 0x%x at time %v\n", stval.S, o.name, addrc, m.time)
+				logger.Printf("write %v to '%s' 0x%x at time %v\n", stval, o.name, addrc, m.time)
+				m.traces[len(m.traces)-1].Append(Action{
+					addr: addrc,
+					val:  stval,
+					time: m.time,
+				})
 			}
 		}
 	}
@@ -413,11 +425,12 @@ type SymVal struct {
 }
 
 type Checkpoint struct {
-	pc   int32
-	regs []smt.Int32
-	mem  *Memory
-	vals []SymVal
-	outs []Output
+	pc     int32
+	regs   []smt.Int32
+	mem    *Memory
+	vals   []SymVal
+	outs   []Output
+	traces []Trace
 
 	cond smt.Bool
 }
@@ -430,22 +443,25 @@ func Restore(cp *Checkpoint, s *smt.Solver) *Machine {
 		mem:     cp.mem,
 		symvals: cp.vals,
 		outputs: cp.outs,
+		traces:  cp.traces,
 	}
 }
 
 func (m *Machine) Checkpoint(cond smt.Bool) *Checkpoint {
 	cp := &Checkpoint{
-		regs: make([]smt.Int32, len(m.regs)),
-		mem:  NewMemory(m.mem),
-		vals: make([]SymVal, len(m.symvals)),
-		pc:   m.pc,
-		cond: cond,
-		outs: make([]Output, len(m.outputs)),
+		regs:   make([]smt.Int32, len(m.regs)),
+		mem:    NewMemory(m.mem),
+		vals:   make([]SymVal, len(m.symvals)),
+		pc:     m.pc,
+		cond:   cond,
+		outs:   make([]Output, len(m.outputs)),
+		traces: make([]Trace, len(m.traces)),
 	}
 
 	copy(cp.regs, m.regs)
 	copy(cp.vals, m.symvals)
 	copy(cp.outs, m.outputs)
+	copy(cp.traces, m.traces)
 	// duplicate memory because current m.mem must become read-only
 	m.mem = NewMemory(m.mem)
 

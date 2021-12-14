@@ -62,6 +62,9 @@ const (
 	SymMarkBytes
 	SymMarkOutput
 	SymMarkArray
+	SymSnapshot
+	SymTraceReset
+	SymSnapshotEq
 )
 
 const (

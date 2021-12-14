@@ -10,28 +10,35 @@
 #define RVSYM_MARK_NBYTES 5
 #define RVSYM_MARK_OUTPUT 6
 #define RVSYM_MARK_ARRAY 7
+#define RVSYM_SNAPSHOT 8
+#define RVSYM_TRACE_RESET 9
+#define RVSYM_SNAPSHOT_EQ 10
 
-static inline void symcall_0(int symno) {
+static inline uintptr_t symcall_0(int symno) {
     register uintptr_t a0 asm("a0") = symno;
     asm volatile("ecall" : "+r"(a0) : : "memory");
+    return a0;
 }
-static inline void symcall_1(int symno, uintptr_t arg0) {
+static inline uintptr_t symcall_1(int symno, uintptr_t arg0) {
     register uintptr_t a0 asm("a0") = symno;
     register uintptr_t a1 asm("a1") = arg0;
     asm volatile("ecall" : "+r"(a0), "+r"(a1) : : "memory");
+    return a0;
 }
-static inline void symcall_2(int symno, uintptr_t arg0, uintptr_t arg1) {
+static inline uintptr_t symcall_2(int symno, uintptr_t arg0, uintptr_t arg1) {
     register uintptr_t a0 asm("a0") = symno;
     register uintptr_t a1 asm("a1") = arg0;
     register uintptr_t a2 asm("a2") = arg1;
     asm volatile("ecall" : "+r"(a0), "+r"(a1), "+r"(a2) : : "memory");
+    return a0;
 }
-static inline void symcall_3(int symno, uintptr_t arg0, uintptr_t arg1, uintptr_t arg2) {
+static inline uintptr_t symcall_3(int symno, uintptr_t arg0, uintptr_t arg1, uintptr_t arg2) {
     register uintptr_t a0 asm("a0") = symno;
     register uintptr_t a1 asm("a1") = arg0;
     register uintptr_t a2 asm("a2") = arg1;
     register uintptr_t a3 asm("a3") = arg2;
     asm volatile("ecall" : "+r"(a0), "+r"(a1), "+r"(a2), "+r"(a3) : : "memory");
+    return a0;
 }
 
 static inline void rvsym_mark_bytes(volatile void* p, uint32_t nbytes, const char* name) {
@@ -64,6 +71,18 @@ static inline void rvsym_fail() {
 
 static inline void rvsym_mark_array(volatile void* p, uint32_t nbytes) {
     symcall_2(RVSYM_MARK_ARRAY, (uintptr_t) p, nbytes);
+}
+
+static inline int rvsym_snapshot() {
+    return (int) symcall_0(RVSYM_SNAPSHOT);
+}
+
+static inline void rvsym_trace_reset() {
+    symcall_0(RVSYM_TRACE_RESET);
+}
+
+static inline int rvsym_snapshot_eq(int s0, int s1) {
+    return symcall_2(RVSYM_SNAPSHOT_EQ, (uintptr_t) s0, (uintptr_t) s1);
 }
 
 #define rvsym_assert(x)         \

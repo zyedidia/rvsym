@@ -45,7 +45,7 @@ int main() {
 
     // Make the input symbolic. 
     rvsym_mark_bytes(re, sizeof re, "re");
-    /* re[SIZE-1] = '\0'; */
+    re[SIZE-1] = '\0';
 
     // Try to match against a constant string "hello".
     match(re, "hello");
