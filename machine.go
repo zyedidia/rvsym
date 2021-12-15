@@ -58,7 +58,7 @@ func NewMachine(pc int32, mem *Memory) *Machine {
 		pc:     pc,
 		regs:   make([]smt.Int32, 32),
 		mem:    mem,
-		traces: make([]Trace, 1),
+		traces: []Trace{make(Trace)},
 	}
 }
 
@@ -151,11 +151,11 @@ func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
 		m.regs[10] = smt.Int32{C: int32(len(m.traces) - 1)}
 	case SymTraceReset:
 		m.time = time.Duration(0)
-		m.traces = append(m.traces, Trace{})
+		m.traces = append(m.traces, make(Trace))
 	case SymSnapshotEq:
 		s1 := m.regs[11].C
 		s2 := m.regs[12].C
-		eq := m.traces[s1].Eq(m.traces[s2])
+		eq := m.traces[s1].Eq(m.traces[s2], s)
 		if eq {
 			m.regs[10] = smt.Int32{C: 1}
 		} else {
@@ -394,11 +394,7 @@ func (m *Machine) store(insn uint32, s *smt.Solver) {
 		for _, o := range m.outputs {
 			if addrc >= o.base && addrc < o.base+o.size {
 				logger.Printf("write %v to '%s' 0x%x at time %v\n", stval, o.name, addrc, m.time)
-				m.traces[len(m.traces)-1].Append(Action{
-					addr: addrc,
-					val:  stval,
-					time: m.time,
-				})
+				m.traces[len(m.traces)-1].Add(addrc, m.time, stval)
 			}
 		}
 	}

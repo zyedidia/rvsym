@@ -9,9 +9,9 @@ counter.o: counter.cc counter.cxx
 counter.bin: counter.o
 
 %.cxx: %.sv
-	yosys -q -p 'read_verilog -sv -noautowire $<; write_cxxrtl -g0 -O6 $@'
+	yosys -q -p 'read_verilog -sv -noautowire $<; hierarchy -auto-top; write_cxxrtl -nohierarchy -g0 -O3 $@'
 
-%.o: %.cc %.cxx
+%.o: %.cc counter.cxx
 	$(CXX) $(CXXFLAGS) -I$(YOSYS_INCLUDE) -c $< -o $@
 
 clean:
