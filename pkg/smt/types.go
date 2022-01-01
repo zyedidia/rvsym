@@ -1,5 +1,7 @@
 package smt
 
+import "fmt"
+
 type Int32 struct {
 	C int32
 	S SymInt32
@@ -254,6 +256,13 @@ func (a Int32) ToInt64z(s *Solver) Int64 {
 		return Int64{C: int64(uint32(a.C))}
 	}
 	return Int64{S: a.S.ToInt64z(s)}
+}
+
+func (a Int32) String() string {
+	if a.Concrete() {
+		return fmt.Sprintf("%d", a.C)
+	}
+	return fmt.Sprintf("%v", a.S)
 }
 
 type Int8 struct {

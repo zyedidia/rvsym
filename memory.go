@@ -188,8 +188,6 @@ func (m *Memory) Write16(addr, val smt.Int32, s *smt.Solver) bool {
 	// (addr & 0b11) << 3: this is the index of the first bit in the target
 	// 32-bit word that val will be written to
 	wrb := addr.And(smt.Int32{C: 0b011}, s).Sll(smt.Int32{C: 3}, s)
-	// clear out the top 16 bits just in case
-	val = val.ToInt16(s).ToInt32z(s)
 	// val << wrb: shift 16-bit val over to the target
 	// position.
 	wrword := val.Sll(wrb, s)
@@ -205,7 +203,6 @@ func (m *Memory) Write16(addr, val smt.Int32, s *smt.Solver) bool {
 func (m *Memory) Write8(addr, val smt.Int32, s *smt.Solver) bool {
 	// same as Write16 but for 8 bits
 	wrb := addr.And(smt.Int32{C: 0b011}, s).Sll(smt.Int32{C: 3}, s)
-	val = val.ToInt8(s).ToInt32z(s)
 	wrword := val.Sll(wrb, s)
 	wrmask := smt.Int32{C: 0x000000ff}.Sll(wrb, s).Not(s)
 	idx := addr.Srl(smt.Int32{C: 2}, s)

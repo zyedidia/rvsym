@@ -389,23 +389,25 @@ func (m *Machine) store(insn uint32, s *smt.Solver) {
 	addr := m.regs[rs1(insn)].Add(smt.Int32{C: imm}, s)
 	stval := m.regs[rs2(insn)]
 
+	switch funct3(insn) {
+	case ExtByte:
+		stval = stval.ToInt8(s).ToInt32z(s)
+		m.mem.Write8(addr, stval, s)
+	case ExtHalf:
+		stval = stval.ToInt16(s).ToInt32z(s)
+		m.mem.Write16(addr, stval, s)
+	case ExtWord:
+		m.mem.Write32(addr, stval, s)
+	}
+
 	if addr.Concrete() {
 		addrc := uint32(addr.C)
 		for _, o := range m.outputs {
 			if addrc >= o.base && addrc < o.base+o.size {
-				logger.Printf("write %v to '%s' 0x%x at time %v\n", stval, o.name, addrc, m.time)
+				logger.Printf("write %v to '%s' at time %v\n", stval, o.name, m.time)
 				m.traces[len(m.traces)-1].Add(addrc, m.time, stval)
 			}
 		}
-	}
-
-	switch funct3(insn) {
-	case ExtByte:
-		m.mem.Write8(addr, stval, s)
-	case ExtHalf:
-		m.mem.Write16(addr, stval, s)
-	case ExtWord:
-		m.mem.Write32(addr, stval, s)
 	}
 }
 
