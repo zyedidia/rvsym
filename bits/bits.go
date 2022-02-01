@@ -1,7 +1,30 @@
 package bits
 
+type Vec struct {
+	B  uint32
+	Sz int
+}
+
+func Join(vecs ...Vec) uint32 {
+	var x uint32
+	start := 0
+	for i := len(vecs) - 1; i >= 0; i-- {
+		v := vecs[i]
+		x = Set(x, start+v.Sz-1, start, v.B)
+		start += v.Sz
+	}
+	return x
+}
+
 func GetBit(x uint32, bit int) uint32 {
 	return (x >> bit) & 1
+}
+
+func Repeat(bit uint32, n int) uint32 {
+	if bit == 0 {
+		return 0
+	}
+	return 0xffffffff & Mask(n)
 }
 
 func Mask(nbits int) uint32 {
@@ -21,7 +44,7 @@ func Clear(x uint32, ub, lb int) uint32 {
 }
 
 func Set(x uint32, ub, lb int, v uint32) uint32 {
-	return Clear(x, lb, ub) | (v << lb)
+	return Clear(x, ub, lb) | (v << lb)
 }
 
 func RemapBit(i uint32, from, to int) uint32 {
