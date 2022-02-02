@@ -43,6 +43,7 @@ const (
 	OpStore  = 0b0100011
 	OpFence  = 0b0001111
 	OpSys    = 0b1110011
+	OpAtomic = 0b0101111
 )
 
 const (

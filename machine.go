@@ -144,6 +144,8 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 		m.load(insn, s)
 	case OpStore:
 		m.store(insn, s)
+	case OpAtomic:
+		m.atomic(insn, s)
 	}
 
 	return
@@ -434,6 +436,70 @@ func (m *Machine) store(insn uint32, s *smt.Solver) {
 			}
 		}
 	}
+}
+
+func (m *Machine) atomic(insn uint32, s *smt.Solver) {
+	funct5 := funct7(insn) >> 2
+
+	const (
+		lr   = 0b00010
+		sc   = 0b00011
+		swap = 0b00001
+		add  = 0b00000
+		xor  = 0b00100
+		and  = 0b01100
+		or   = 0b01000
+		min  = 0b10000
+		max  = 0b10100
+		minu = 0b11000
+		maxu = 0b11100
+	)
+
+	addr := m.regs[rs1(insn)]
+
+	if funct5 == sc {
+		m.mem.Write32(addr, m.regs[rs2(insn)], s)
+		return
+	}
+
+	rdval, valid := m.mem.Read32(addr, s)
+	if !valid {
+		m.err(fmt.Errorf("invalid memory read at %v", addr))
+		return
+	}
+
+	m.WriteReg(rd(insn), rdval)
+
+	if funct5 == lr {
+		return
+	}
+
+	a := rdval
+	b := m.regs[rs2(insn)]
+	var result smt.Int32
+	switch funct5 {
+	case add:
+		result = a.Add(b, s)
+	case xor:
+		result = a.Xor(b, s)
+	case and:
+		result = a.And(b, s)
+	case or:
+		result = a.Or(b, s)
+	case swap:
+		fallthrough
+	case min:
+		fallthrough
+	case max:
+		fallthrough
+	case minu:
+		fallthrough
+	case maxu:
+		m.err(fmt.Errorf("atomic operation unimplemented"))
+		return
+	}
+
+	m.mem.Write32(addr, result, s)
 }
 
 type Output struct {
