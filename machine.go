@@ -80,6 +80,7 @@ func (m *Machine) FetchInsn(s *smt.Solver) (uint32, bool, error) {
 		return 0, false, fmt.Errorf("cannot execute symbolic instruction")
 	}
 
+	// fmt.Printf("%v\n", isa.Disassemble(uint(m.pc), uint(lword.C)))
 	decoded, compressed, illegal := rvc.Decompress(uint32(lword.C))
 
 	if illegal {
@@ -93,6 +94,8 @@ func (m *Machine) FetchInsn(s *smt.Solver) (uint32, bool, error) {
 		}
 		decoded = (uint32(uword.C) << 16) | uint32(lword.C)
 	}
+	// fmt.Printf("%v, %v\n", isa.Disassemble(uint(m.pc), uint(decoded)), compressed)
+	// fmt.Printf("%v, %v, %v\n", m.regs[15], m.regs[14], m.regs[13])
 
 	return decoded, compressed, nil
 }

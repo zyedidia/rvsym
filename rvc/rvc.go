@@ -194,7 +194,7 @@ func Decompress(insn uint32) (out uint32, compressed bool, illegal bool) {
 				// c.andi -> andi rd, rd, imm
 				// instr_o = {{6 {instr_i[12]}}, instr_i[12], instr_i[6:2], 2'b01, instr_i[9:7],
 				//            3'b111, 2'b01, instr_i[9:7], {OPCODE_OP_IMM}};
-				bits.Join(
+				out = bits.Join(
 					bits.Vec{bits.Repeat(bits.GetBit(insn, 12), 6), 6},
 					bits.Vec{bits.GetBit(insn, 12), 1},
 					bits.Vec{bits.Get(insn, 6, 2), 6 - 2 + 1},
@@ -210,9 +210,66 @@ func Decompress(insn uint32) (out uint32, compressed bool, illegal bool) {
 				insn6_5 := bits.Vec{bits.Get(insn, 6, 5), 2}
 				switch bits.Join(insn12, insn6_5) {
 				case 0b000:
+					// c.sub -> sub rd', rd', rs2'
+					// instr_o = {2'b01, 5'b0, 2'b01, instr_i[4:2], 2'b01, instr_i[9:7],
+					//            3'b000, 2'b01, instr_i[9:7], {OPCODE_OP}};
+					out = bits.Join(
+						bits.Vec{1, 2},
+						bits.Vec{0, 5},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 4, 2), 4 - 2 + 1},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 9, 7), 9 - 7 + 1},
+						bits.Vec{0, 3},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 9, 7), 9 - 7 + 1},
+						bits.Vec{opcodeOp, 7},
+					)
 				case 0b001:
+					// c.xor -> xor rd', rd', rs2'
+					// instr_o = {7'b0, 2'b01, instr_i[4:2], 2'b01, instr_i[9:7], 3'b100,
+					//            2'b01, instr_i[9:7], {OPCODE_OP}};
+					out = bits.Join(
+						bits.Vec{0, 7},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 4, 2), 4 - 2 + 1},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 9, 7), 9 - 7 + 1},
+						bits.Vec{0b100, 3},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 9, 7), 9 - 7 + 1},
+						bits.Vec{opcodeOp, 7},
+					)
 				case 0b010:
+					// c.or  -> or  rd', rd', rs2'
+					// instr_o = {7'b0, 2'b01, instr_i[4:2], 2'b01, instr_i[9:7], 3'b110,
+					//            2'b01, instr_i[9:7], {OPCODE_OP}};
+					out = bits.Join(
+						bits.Vec{0, 7},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 4, 2), 4 - 2 + 1},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 9, 7), 9 - 7 + 1},
+						bits.Vec{0b110, 3},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 9, 7), 9 - 7 + 1},
+						bits.Vec{opcodeOp, 7},
+					)
 				case 0b011:
+					// c.and -> and rd', rd', rs2'
+					// instr_o = {7'b0, 2'b01, instr_i[4:2], 2'b01, instr_i[9:7], 3'b111,
+					//            2'b01, instr_i[9:7], {OPCODE_OP}};
+					out = bits.Join(
+						bits.Vec{0, 7},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 4, 2), 4 - 2 + 1},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 9, 7), 9 - 7 + 1},
+						bits.Vec{0b111, 3},
+						bits.Vec{1, 2},
+						bits.Vec{bits.Get(insn, 9, 7), 9 - 7 + 1},
+						bits.Vec{opcodeOp, 7},
+					)
 				case 0b100, 0b101, 0b110, 0b111:
 					// 100: c.subw
 					// 101: c.addw
