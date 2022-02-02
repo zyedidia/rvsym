@@ -7,6 +7,7 @@ import (
 
 	"github.com/zyedidia/rvsym/bits"
 	"github.com/zyedidia/rvsym/pkg/smt"
+	"github.com/zyedidia/rvsym/rvc"
 )
 
 type Machine struct {
@@ -70,18 +71,40 @@ func (m *Machine) WriteReg(reg uint32, val smt.Int32) {
 	m.regs[reg] = val
 }
 
-func (m *Machine) FetchInsn(s *smt.Solver) (uint32, error) {
-	word, ok := m.mem.Read32(smt.Int32{C: m.pc}, s)
+func (m *Machine) FetchInsn(s *smt.Solver) (uint32, bool, error) {
+	lword, ok := m.mem.Read16u(smt.Int32{C: m.pc}, s)
 	if !ok {
-		return 0, fmt.Errorf("program counter out of bounds")
-	} else if !word.Concrete() {
-		return 0, fmt.Errorf("cannot execute symbolic instruction")
+		return 0, false, fmt.Errorf("program counter out of bounds: %x", m.pc)
+	} else if !lword.Concrete() {
+		return 0, false, fmt.Errorf("cannot execute symbolic instruction")
 	}
-	return uint32(word.C), nil
+
+	decoded, compressed, illegal := rvc.Decompress(uint32(lword.C))
+
+	if illegal {
+		return decoded, compressed, fmt.Errorf("illegal instruction")
+	} else if !compressed {
+		uword, ok := m.mem.Read16u(smt.Int32{C: m.pc + 2}, s)
+		if !ok {
+			return 0, false, fmt.Errorf("program counter out of bounds: %x", m.pc)
+		} else if !uword.Concrete() {
+			return 0, false, fmt.Errorf("cannot execute symbolic instruction")
+		}
+		decoded = (uint32(uword.C) << 16) | uint32(lword.C)
+	}
+
+	return decoded, compressed, nil
 }
 
-func (m *Machine) Exec(s *smt.Solver) {
-	insn, err := m.FetchInsn(s)
+func (m *Machine) Exec(s *smt.Solver) (isz int32) {
+	insn, compressed, err := m.FetchInsn(s)
+
+	if compressed {
+		isz = 2
+	} else {
+		isz = 4
+	}
+
 	if err != nil {
 		m.err(err)
 		return
@@ -114,14 +137,16 @@ func (m *Machine) Exec(s *smt.Solver) {
 	case OpAuipc:
 		m.auipc(insn)
 	case OpJal:
-		m.jal(insn)
+		m.jal(insn, isz)
 	case OpJalr:
-		m.jalr(insn, s)
+		m.jalr(insn, isz, s)
 	case OpLoad:
 		m.load(insn, s)
 	case OpStore:
 		m.store(insn, s)
 	}
+
+	return
 }
 
 func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
@@ -333,14 +358,14 @@ func (m *Machine) auipc(insn uint32) {
 	m.WriteReg(rd(insn), smt.Int32{C: m.pc + extractImm(insn, ImmTypeU)})
 }
 
-func (m *Machine) jal(insn uint32) {
+func (m *Machine) jal(insn uint32, isz int32) {
 	imm := extractImm(insn, ImmTypeJ)
 	pc := m.pc + imm
-	m.WriteReg(rd(insn), smt.Int32{C: m.pc + 4})
+	m.WriteReg(rd(insn), smt.Int32{C: m.pc + isz})
 	m.br(pc, smt.Bool{C: true})
 }
 
-func (m *Machine) jalr(insn uint32, s *smt.Solver) {
+func (m *Machine) jalr(insn uint32, isz int32, s *smt.Solver) {
 	imm := extractImm(insn, ImmTypeI)
 	pc := m.regs[rs1(insn)].Add(smt.Int32{C: imm}, s)
 	if !pc.Concrete() {
@@ -348,7 +373,7 @@ func (m *Machine) jalr(insn uint32, s *smt.Solver) {
 		return
 	}
 
-	m.WriteReg(rd(insn), smt.Int32{C: m.pc + 4})
+	m.WriteReg(rd(insn), smt.Int32{C: m.pc + isz})
 	m.br(pc.C, smt.Bool{C: true})
 }
 

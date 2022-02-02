@@ -49,7 +49,7 @@ func (e *Engine) Step() bool {
 	e.Stats.Steps++
 	m := e.active
 
-	m.Exec(e.smt)
+	isz := m.Exec(e.smt)
 
 	exited := e.HandleExit(m)
 	if exited {
@@ -61,17 +61,17 @@ func (e *Engine) Step() bool {
 	case m.Status.HasBr && br.cond.Concrete() && br.cond.C:
 		m.pc = br.pc
 	case m.Status.HasBr && br.cond.Concrete():
-		m.pc += 4
+		m.pc += isz
 	case m.Status.HasBr:
 		var cond, alt smt.Bool
 		var condpc, altpc int32
 
 		if randbool() {
 			cond, alt = br.cond, br.cond.Not(e.smt)
-			condpc, altpc = br.pc, m.pc+4
+			condpc, altpc = br.pc, m.pc+isz
 		} else {
 			alt, cond = br.cond, br.cond.Not(e.smt)
-			altpc, condpc = br.pc, m.pc+4
+			altpc, condpc = br.pc, m.pc+isz
 		}
 
 		e.smt.Push()
@@ -92,7 +92,7 @@ func (e *Engine) Step() bool {
 			m.AddCond(cond, true, e.smt)
 		}
 	default:
-		m.pc += 4
+		m.pc += isz
 	}
 
 	if !e.HandleExit(m) {

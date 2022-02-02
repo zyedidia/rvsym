@@ -19,10 +19,11 @@ INCLUDE=-I$(RVSYM_INCLUDE)
 
 O ?= 2
 
-CXXFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=rv32im -mabi=ilp32 -std=c++14
-CFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=rv32im -mabi=ilp32 -std=gnu99
-ASFLAGS=-march=rv32im -mabi=ilp32
-LDFLAGS=-T $(RVSYM_LIB)/memmap.ld -melf32lriscv -L$(RV_ROOT)/$(PREFIX)/lib/rv32im/ilp32
+ARCH=rv32imc
+CXXFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=$(ARCH) -mabi=ilp32 -std=c++14
+CFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=$(ARCH) -mabi=ilp32 -std=gnu99
+ASFLAGS=-march=$(ARCH) -mabi=ilp32
+LDFLAGS=-T $(RVSYM_LIB)/memmap.ld -melf32lriscv -L$(RV_ROOT)/$(PREFIX)/lib/$(ARCH)/ilp32
 
 LIBOBJ += $(RVSYM_LIB)/start.o $(RVSYM_LIB)/libc.o $(RVSYM_LIB)/cstart.o
 
