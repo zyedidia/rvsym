@@ -228,7 +228,7 @@ func Decompress(insn uint32) (out uint32, compressed bool, illegal bool) {
 			//            instr_i[9:7], 2'b00, instr_i[13], instr_i[11:10], instr_i[4:3],
 			//            instr_i[12], {OPCODE_BRANCH}};
 			out = bits.Join(
-				bits.Vec{bits.Repeat(bits.GetBit(insn, 12), 1), 1},
+				bits.Vec{bits.Repeat(bits.GetBit(insn, 12), 4), 4},
 				bits.Vec{bits.Get(insn, 6, 5), 2},
 				bits.Vec{bits.GetBit(insn, 2), 1},
 				bits.Vec{0, 5},

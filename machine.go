@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/deadsy/rvda"
 	"github.com/zyedidia/rvsym/bits"
 	"github.com/zyedidia/rvsym/pkg/smt"
 	"github.com/zyedidia/rvsym/rvc"
@@ -94,6 +95,12 @@ func (m *Machine) FetchInsn(s *smt.Solver) (uint32, bool, error) {
 	}
 
 	return decoded, compressed, nil
+}
+
+var isa *rvda.ISA
+
+func init() {
+	isa, _ = rvda.New(32, rvda.RV32gc)
 }
 
 func (m *Machine) Exec(s *smt.Solver) (isz int32) {

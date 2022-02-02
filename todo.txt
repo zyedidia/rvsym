@@ -1,9 +1,6 @@
-check int32 usage for array/memory ops [x]
-copy data over when marking an array [x]
 use constraints for array for z3 (why is z3 slow with .Sym?)
 concretize jalr and some memory accesses
 array access annotation?
-release resources in boolector [x]
-better ctrl-c support [x]
-summaries [x]
 keep stack of assertions and list for each path
+
+CSR and interrupt support

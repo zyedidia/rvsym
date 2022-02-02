@@ -2,8 +2,7 @@
 
 extern int main();
 
-extern int __bss_start__,
-    __bss_end__;
+extern int __bss_start__, __bss_end__;
 
 void _cstart() {
     int* bss = &__bss_start__;
