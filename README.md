@@ -8,6 +8,13 @@ Rvsym can execute bare-metal rv32im RISC-V programs symbolically.
 go build ./cmd/rvsym
 ```
 
+This build uses Boolector as the SMT backend and statically links. Alternatively,
+you may build with dynamic linking to Z3 if it is installed:
+
+```
+go build -tags z3,noboolector ./cmd/rvsym
+```
+
 The makefiles for building examples try to locate your rvsym install directory
 using git. If you didn't download using git, or you are trying to build an
 example outside of the rvsym repository, you can set the `RVSYM_ROOT`
