@@ -1,3 +1,5 @@
+RVSYM_ROOT ?= $(shell git rev-parse --show-toplevel)
+
 include $(RVSYM_ROOT)/lib/rules.mk
 
 YOSYS_INCLUDE=$(shell yosys-config --datdir)/include
