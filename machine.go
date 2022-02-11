@@ -72,7 +72,17 @@ func (m *Machine) WriteReg(reg uint32, val smt.Int32) {
 	m.regs[reg] = val
 }
 
-func (m *Machine) FetchInsn(s *smt.Solver) (uint32, bool, error) {
+func (m *Machine) FetchInsnNoCompression(s *smt.Solver) (uint32, bool, error) {
+	word, ok := m.mem.Read32(smt.Int32{C: m.pc}, s)
+	if !ok {
+		return 0, false, fmt.Errorf("program counter out of bounds")
+	} else if !word.Concrete() {
+		return 0, false, fmt.Errorf("cannot execute symbolic instruction")
+	}
+	return uint32(word.C), false, nil
+}
+
+func (m *Machine) FetchInsnCompression(s *smt.Solver) (uint32, bool, error) {
 	lword, ok := m.mem.Read16u(smt.Int32{C: m.pc}, s)
 	if !ok {
 		return 0, false, fmt.Errorf("program counter out of bounds: %x", m.pc)
@@ -80,7 +90,6 @@ func (m *Machine) FetchInsn(s *smt.Solver) (uint32, bool, error) {
 		return 0, false, fmt.Errorf("cannot execute symbolic instruction")
 	}
 
-	// fmt.Printf("%v\n", isa.Disassemble(uint(m.pc), uint(lword.C)))
 	decoded, compressed, illegal := rvc.Decompress(uint32(lword.C))
 
 	if illegal {
@@ -94,8 +103,6 @@ func (m *Machine) FetchInsn(s *smt.Solver) (uint32, bool, error) {
 		}
 		decoded = (uint32(uword.C) << 16) | uint32(lword.C)
 	}
-	// fmt.Printf("%v, %v\n", isa.Disassemble(uint(m.pc), uint(decoded)), compressed)
-	// fmt.Printf("%v, %v, %v\n", m.regs[15], m.regs[14], m.regs[13])
 
 	return decoded, compressed, nil
 }
@@ -107,7 +114,7 @@ func init() {
 }
 
 func (m *Machine) Exec(s *smt.Solver) (isz int32) {
-	insn, compressed, err := m.FetchInsn(s)
+	insn, compressed, err := m.FetchInsnNoCompression(s)
 
 	if compressed {
 		isz = 2

@@ -19,7 +19,7 @@ INCLUDE=-I$(RVSYM_INCLUDE)
 
 O ?= 2
 
-ARCH=rv32imac
+ARCH=rv32im
 CXXFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=$(ARCH) -mabi=ilp32 -std=c++14
 CFLAGS=-O$(O) $(INCLUDE) -g -Wall -nostdlib -nostartfiles -ffreestanding -march=$(ARCH) -mabi=ilp32 -std=gnu99
 ASFLAGS=-march=$(ARCH) -mabi=ilp32
