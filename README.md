@@ -21,6 +21,12 @@ example outside of the rvsym repository, you can set the `RVSYM_ROOT`
 environment variable to point to your installation (if you want to use the
 included library and build rules in `lib/`).
 
+In order to build the examples you will also need the RISC-V GNU toolchain.
+Pre-built toolchains are available from SiFive
+[here](https://www.sifive.com/software). After downloading, unpack the tar
+archive to `/opt/riscv` (or if you choose another location, point the `RISCV`
+environment variable to your installation).
+
 # Usage
 
 See the `./examples/basic` directory for a number of example programs. Compile with `make`,
