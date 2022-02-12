@@ -8,7 +8,7 @@ By default, rvsym uses Boolector as the SMT backend. First you need to set up
 Boolector:
 
 ```
-./setup-boolector.sh
+./pkg/smt/setup-boolector.sh
 ```
 
 Then you can build
