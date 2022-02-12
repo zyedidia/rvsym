@@ -4,12 +4,20 @@ Rvsym can execute bare-metal rv32im RISC-V programs symbolically.
 
 # Building
 
+By default, rvsym uses Boolector as the SMT backend. First you need to set up
+Boolector:
+
+```
+./setup-boolector.sh
+```
+
+Then you can build
+
 ```
 go build ./cmd/rvsym
 ```
 
-This build uses Boolector as the SMT backend and statically links. Alternatively,
-you may build with dynamic linking to Z3 if it is installed:
+Alternatively, you may build with dynamic linking to Z3 if it is installed:
 
 ```
 go build -tags z3,noboolector ./cmd/rvsym

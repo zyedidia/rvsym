@@ -1,3 +1,5 @@
+cd ./pkg/smt
+
 git clone https://github.com/bitwuzla/bitwuzla
 cd bitwuzla
 ./contrib/setup-cadical.sh
