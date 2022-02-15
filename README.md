@@ -4,12 +4,20 @@ Rvsym can execute bare-metal rv32im RISC-V programs symbolically.
 
 # Building
 
+By default, rvsym uses Boolector as the SMT backend. First you need to set up
+Boolector:
+
+```
+./pkg/smt/setup-boolector.sh
+```
+
+Then you can build
+
 ```
 go build ./cmd/rvsym
 ```
 
-This build uses Boolector as the SMT backend and statically links. Alternatively,
-you may build with dynamic linking to Z3 if it is installed:
+Alternatively, you may build with dynamic linking to Z3 if it is installed:
 
 ```
 go build -tags z3,noboolector ./cmd/rvsym
@@ -20,6 +28,12 @@ using git. If you didn't download using git, or you are trying to build an
 example outside of the rvsym repository, you can set the `RVSYM_ROOT`
 environment variable to point to your installation (if you want to use the
 included library and build rules in `lib/`).
+
+In order to build the examples you will also need the RISC-V GNU toolchain.
+Pre-built toolchains are available from SiFive
+[here](https://www.sifive.com/software). After downloading, unpack the tar
+archive to `/opt/riscv` (or if you choose another location, point the `RISCV`
+environment variable to your installation).
 
 # Usage
 

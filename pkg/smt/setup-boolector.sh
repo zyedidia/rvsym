@@ -1,3 +1,5 @@
+cd ./pkg/smt
+
 git clone https://github.com/zyedidia/boolector
 cd boolector
 ./contrib/setup-lingeling.sh
