@@ -2,7 +2,10 @@ package rvsym
 
 import (
 	"bytes"
+	"debug/elf"
 	"encoding/binary"
+	"fmt"
+	"io"
 
 	"github.com/marcinbor85/gohex"
 )
@@ -49,6 +52,41 @@ func (l *IntelHexLoader) Load(data []byte) ([]Segment, uint32, error) {
 		}
 	}
 	return segs, l.Entry, nil
+}
+
+type ElfLoader struct{}
+
+func (e *ElfLoader) Load(data []byte) ([]Segment, uint32, error) {
+	r := bytes.NewReader(data)
+	f, err := elf.NewFile(r)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer f.Close()
+
+	if f.Type != elf.ET_EXEC {
+		return nil, 0, fmt.Errorf("invalid elf file type: %v", f.Type)
+	}
+
+	segs := make([]Segment, 0, len(f.Progs))
+	for _, p := range f.Progs {
+		if p.Type == elf.PT_LOAD {
+			data := make([]byte, p.Memsz)
+			fdata := make([]byte, p.Filesz)
+			n, err := p.ReadAt(fdata, 0)
+			if err != nil && err != io.EOF {
+				return nil, 0, err
+			}
+			copy(data, fdata[:n])
+
+			segs = append(segs, Segment{
+				addr: uint32(p.Vaddr),
+				data: toWords(data),
+			})
+		}
+	}
+
+	return segs, uint32(f.Entry), nil
 }
 
 func toWords(data []byte) []uint32 {

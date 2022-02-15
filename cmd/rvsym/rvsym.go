@@ -72,7 +72,7 @@ func main() {
 			Entry: opts.Entry,
 		}
 	} else {
-		fatal("unknown file format, expected .hex or .bin")
+		loader = &rvsym.ElfLoader{}
 	}
 
 	segs, entry, err := loader.Load(bin)
