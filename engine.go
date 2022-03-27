@@ -23,7 +23,7 @@ type Stats struct {
 	Forks int
 }
 
-func NewEngine(segs []Segment, entrypc uint32) *Engine {
+func NewEngine(segs []Segment, entrypc uint32, osSetup bool) *Engine {
 	s := smt.NewSolver()
 	mem := NewMemory(nil)
 
@@ -35,6 +35,12 @@ func NewEngine(segs []Segment, entrypc uint32) *Engine {
 	}
 
 	machine := NewMachine(int32(entrypc), mem)
+
+	const initsp = 0x7ffff00
+	if osSetup {
+		machine.regs[2] = smt.Int32{C: int32(initsp)}
+		mem.Write32(smt.Int32{C: int32(initsp)}, smt.Int32{C: 0}, s)
+	}
 
 	return &Engine{
 		active: machine,

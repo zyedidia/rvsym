@@ -16,20 +16,20 @@
 
 static inline uintptr_t symcall_0(int symno) {
     register uintptr_t a0 asm("a0") = symno;
-    asm volatile("ecall" : "+r"(a0) : : "memory");
+    asm volatile("ebreak" : "+r"(a0) : : "memory");
     return a0;
 }
 static inline uintptr_t symcall_1(int symno, uintptr_t arg0) {
     register uintptr_t a0 asm("a0") = symno;
     register uintptr_t a1 asm("a1") = arg0;
-    asm volatile("ecall" : "+r"(a0), "+r"(a1) : : "memory");
+    asm volatile("ebreak" : "+r"(a0), "+r"(a1) : : "memory");
     return a0;
 }
 static inline uintptr_t symcall_2(int symno, uintptr_t arg0, uintptr_t arg1) {
     register uintptr_t a0 asm("a0") = symno;
     register uintptr_t a1 asm("a1") = arg0;
     register uintptr_t a2 asm("a2") = arg1;
-    asm volatile("ecall" : "+r"(a0), "+r"(a1), "+r"(a2) : : "memory");
+    asm volatile("ebreak" : "+r"(a0), "+r"(a1), "+r"(a2) : : "memory");
     return a0;
 }
 static inline uintptr_t symcall_3(int symno, uintptr_t arg0, uintptr_t arg1, uintptr_t arg2) {
@@ -37,7 +37,7 @@ static inline uintptr_t symcall_3(int symno, uintptr_t arg0, uintptr_t arg1, uin
     register uintptr_t a1 asm("a1") = arg0;
     register uintptr_t a2 asm("a2") = arg1;
     register uintptr_t a3 asm("a3") = arg2;
-    asm volatile("ecall" : "+r"(a0), "+r"(a1), "+r"(a2), "+r"(a3) : : "memory");
+    asm volatile("ebreak" : "+r"(a0), "+r"(a1), "+r"(a2), "+r"(a3) : : "memory");
     return a0;
 }
 

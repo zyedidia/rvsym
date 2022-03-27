@@ -79,6 +79,7 @@ func (m *Machine) FetchInsnNoCompression(s *smt.Solver) (uint32, bool, error) {
 	} else if !word.Concrete() {
 		return 0, false, fmt.Errorf("cannot execute symbolic instruction")
 	}
+	// fmt.Println(isa.Disassemble(uint(m.pc), uint(word.C)))
 	return uint32(word.C), false, nil
 }
 
@@ -130,7 +131,7 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 	switch insn {
 	case InsnNop:
 		return
-	case InsnEcall:
+	case InsnEbreak:
 		symnum := m.regs[10] // a0
 		if !symnum.Concrete() {
 			m.err(fmt.Errorf("symcall number is symbolic"))
@@ -138,6 +139,13 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 			m.symcall(insn, int(symnum.C), s)
 		}
 		return
+	case InsnEcall:
+		sysnum := m.regs[10] // a0
+		if !sysnum.Concrete() {
+			m.err(fmt.Errorf("syscall number is symbolic"))
+		} else {
+			m.exit(ExitNormal)
+		}
 	}
 
 	op := bits.Get(insn, 6, 0)

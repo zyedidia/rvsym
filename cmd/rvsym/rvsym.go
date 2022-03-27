@@ -78,7 +78,7 @@ func main() {
 	segs, entry, err := loader.Load(bin)
 	must("load", err)
 
-	eng := rvsym.NewEngine(segs, entry)
+	eng := rvsym.NewEngine(segs, entry, true)
 
 	converter := &addr2line.Converter{
 		Elf: opts.Elf,
