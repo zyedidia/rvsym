@@ -136,7 +136,7 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 		if !symnum.Concrete() {
 			m.err(fmt.Errorf("symcall number is symbolic"))
 		} else {
-			m.symcall(insn, int(symnum.C), s)
+			m.symcall(int(symnum.C), s)
 		}
 		return
 	case InsnEcall:
@@ -144,7 +144,7 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 		if !sysnum.Concrete() {
 			m.err(fmt.Errorf("syscall number is symbolic"))
 		} else {
-			m.exit(ExitNormal)
+			m.syscall(int(sysnum.C), s)
 		}
 	}
 
@@ -176,7 +176,14 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 	return
 }
 
-func (m *Machine) symcall(insn uint32, symnum int, s *smt.Solver) {
+func (m *Machine) syscall(sysnum int, s *smt.Solver) {
+	switch sysnum {
+	case SysExit:
+		m.exit(ExitQuiet)
+	}
+}
+
+func (m *Machine) symcall(symnum int, s *smt.Solver) {
 	mustconc := func(val smt.Int32, errmsg string) (uint32, bool) {
 		if !val.Concrete() {
 			m.err(fmt.Errorf(errmsg))
