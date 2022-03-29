@@ -3,6 +3,7 @@ package rvsym
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/deadsy/rvda"
@@ -13,6 +14,7 @@ import (
 
 type Machine struct {
 	pc   int32
+	brk  int32
 	regs []smt.Int32
 	mem  *Memory
 	time time.Duration
@@ -140,7 +142,7 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 		}
 		return
 	case InsnEcall:
-		sysnum := m.regs[10] // a0
+		sysnum := m.regs[17] // a7
 		if !sysnum.Concrete() {
 			m.err(fmt.Errorf("syscall number is symbolic"))
 		} else {
@@ -177,9 +179,42 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 }
 
 func (m *Machine) syscall(sysnum int, s *smt.Solver) {
+	logger.Println("syscall:", syscalls_riscv[sysnum])
 	switch sysnum {
 	case SysExit:
 		m.exit(ExitQuiet)
+	case SysFstat:
+		// fd := m.regs[10].C
+		buf := m.regs[11].C
+		for i := int32(0); i < 112; i += 4 {
+			m.mem.Write32(smt.Int32{C: buf + i}, smt.Int32{C: 0}, s)
+		}
+		m.regs[10] = smt.Int32{C: 0}
+	case SysClose:
+	case SysBrk:
+		if m.regs[10].C != 0 {
+			m.brk = m.regs[10].C
+		}
+		m.regs[10] = smt.Int32{C: m.brk}
+	case SysWrite:
+		fd := m.regs[10].C
+		buf := m.regs[11].C
+		count := m.regs[12].C
+		if fd == 1 {
+			// stdout
+			str := make([]byte, count)
+			err := m.readBytes(uint32(buf), str, s)
+			if err != nil {
+				m.err(err)
+			} else {
+				fmt.Fprint(os.Stdout, string(str))
+			}
+			m.regs[10] = smt.Int32{C: int32(len(str))}
+		} else {
+			m.err(fmt.Errorf("invalid write file descriptor: %d", fd))
+		}
+	default:
+		m.err(fmt.Errorf("unhandled system call: %d", sysnum))
 	}
 }
 
@@ -316,6 +351,19 @@ func (m *Machine) symcall(symnum int, s *smt.Solver) {
 
 func (m *Machine) markSym(val smt.Int32, name string) {
 	m.symvals = append(m.symvals, SymVal{val, name})
+}
+
+func (m *Machine) readBytes(ptr uint32, p []byte, s *smt.Solver) error {
+	for i := uint32(0); i < uint32(len(p)); i++ {
+		if b, ok := m.mem.Read8u(smt.Int32{C: int32(ptr + i)}, s); !ok {
+			return fmt.Errorf("out of bounds string")
+		} else if !b.Concrete() {
+			return fmt.Errorf("symbolic byte in string")
+		} else {
+			p[i] = byte(b.C)
+		}
+	}
+	return nil
 }
 
 func (m *Machine) readString(ptr uint32, size uint32, s *smt.Solver) (string, error) {
@@ -547,6 +595,7 @@ type SymVal struct {
 
 type Checkpoint struct {
 	pc     int32
+	brk    int32
 	regs   []smt.Int32
 	mem    *Memory
 	vals   []SymVal
@@ -560,6 +609,7 @@ func Restore(cp *Checkpoint, s *smt.Solver) *Machine {
 	s.Assert(cp.cond)
 	return &Machine{
 		pc:      cp.pc,
+		brk:     cp.brk,
 		regs:    cp.regs,
 		mem:     cp.mem,
 		symvals: cp.vals,
@@ -574,6 +624,7 @@ func (m *Machine) Checkpoint(cond smt.Bool) *Checkpoint {
 		mem:    NewMemory(m.mem),
 		vals:   make([]SymVal, len(m.symvals)),
 		pc:     m.pc,
+		brk:    m.brk,
 		cond:   cond,
 		outs:   make([]Output, len(m.outputs)),
 		traces: make([]Trace, len(m.traces)),

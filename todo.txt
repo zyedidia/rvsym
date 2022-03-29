@@ -4,3 +4,4 @@ array access annotation?
 keep stack of assertions and list for each path
 
 CSR and interrupt support
+unaligned loads and stores
