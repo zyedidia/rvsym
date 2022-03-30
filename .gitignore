@@ -14,3 +14,5 @@ out.txt
 /pkg/smt/boolector
 /pkg/smt/bitwuzla
 /pkg/smt/deps
+obj_dir
+*.d
