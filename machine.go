@@ -181,6 +181,10 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 func (m *Machine) syscall(sysnum int, s *smt.Solver) {
 	logger.Println("syscall:", syscalls_riscv[sysnum])
 	switch sysnum {
+	case SysOpen:
+		path := m.regs[10].C
+		str, _ := m.readString(uint32(path), 100, s)
+		fmt.Println("Open", str)
 	case SysExit:
 		m.exit(ExitQuiet)
 	case SysFstat:
