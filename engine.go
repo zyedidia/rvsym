@@ -1,10 +1,46 @@
 package rvsym
 
+import "github.com/zyedidia/rvsym/pkg/smt"
+
 type Engine struct {
+	active      *Machine
+	checkpoints []*Checkpoint
+	smt         *smt.Solver
+
+	tcs []TestCase
+
+	Stats Stats
+}
+
+type Stats struct {
+	Exits map[ExitStatus]int
+	Steps int
+	Forks int
 }
 
 func NewEngine(segs []Segment, entry uint32, mode EmuMode) *Engine {
-	return nil
+	s := smt.NewSolver()
+	mem := NewMemory()
+
+	for _, seg := range segs {
+		// TODO
+	}
+
+	machine := NewMachine(int32(entry), mem)
+
+	if mode == EmuLinux {
+		sp := int32(0x7ffff00)
+		machine.regs[2] = smt.Int32{C: sp}
+		mem.WriteWord(smt.Int32{C: sp}, smt.Int32{C: 0}, s)
+	}
+
+	return &Engine{
+		active: machine,
+		smt:    s,
+		Stats: Stats{
+			Exits: make(map[ExitStatus]int),
+		},
+	}
 }
 
 func (e *Engine) Step() bool {

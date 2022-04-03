@@ -297,7 +297,7 @@ func (m *Machine) store(insn uint32, s *smt.Solver) {
 }
 
 func (m *Machine) atomic(insn uint32, s *smt.Solver) {
-	panic("atomics unimplemented")
+	m.err(fmt.Errorf("unimplemented: atomic instruction"))
 }
 
 func (m *Machine) rdbytes(ptr uint32, p []byte, s *smt.Solver) error {

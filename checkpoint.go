@@ -24,7 +24,20 @@ func Restore(cp *Checkpoint, s *smt.Solver) *Machine {
 }
 
 func (m *Machine) Checkpoint(cond smt.Bool) *Checkpoint {
-	return nil
+	cp := &Checkpoint{
+		mstate: mstate{
+			regs:    make([]smt.Int32, len(m.regs)),
+			mem:     m.mem.Copy(),
+			symvals: make([]SymVal, len(m.symvals)),
+			pc:      m.pc,
+		},
+		cond: cond,
+	}
+
+	copy(cp.regs, m.regs)
+	copy(cp.symvals, m.symvals)
+
+	return cp
 }
 
 func (m *Machine) AddCond(cond smt.Bool, checksat bool, s *smt.Solver) {
