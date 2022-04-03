@@ -18,7 +18,11 @@ type TestCase struct {
 	Dump        string
 }
 
-func (tc TestCase) String(hex bool) string {
+func (tc TestCase) String() string {
+	return tc.StringHex(true)
+}
+
+func (tc TestCase) StringHex(hex bool) string {
 	buf := &bytes.Buffer{}
 	if tc.Err != nil {
 		buf.WriteString(tc.Err.Error())

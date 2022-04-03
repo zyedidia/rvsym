@@ -1,43 +1,93 @@
 package rvsym
 
 import (
-	"sort"
+	"encoding/binary"
 
+	"github.com/zyedidia/generic"
+	"github.com/zyedidia/generic/hashmap"
+	"github.com/zyedidia/generic/hashset"
 	"github.com/zyedidia/rvsym/pkg/smt"
 )
 
-// A Memory represents the address space of the symbolic process. It tracks a
-// concrete memory space as a map of concrete addresses to concolic values. It
-// also tracks regions of memory which can be indexed with fully symbolic
-// addresses. These regions of the address space must be registered ahead of
-// time, and during reads/writes can also be bounds checked if desired.
 type Memory struct {
-	rdmem *Memory
-	mem   map[int32]smt.Int32
-	arrs  []smt.ArrayInt32
-	valid map[int32]struct{}
+	mem *hashmap.Map[int32, smt.Int32]
+	// regions of memory that may be symbolically addressed
+	arrs []smt.ArrayInt32
+	// valid concrete addresses within symbolic regions
+	valid *hashset.Set[int32]
 }
 
-// NewMemory creates a new memory. The rdmem argument provides an existing
-// address space that can contain pre-populated values that will only be read
-// by this memory. This avoids unnecessarily copying data that will only ever
-// be read when copying an address space.
-func NewMemory(rdmem *Memory) *Memory {
-	var arrs []smt.ArrayInt32
-	valid := make(map[int32]struct{})
-	if rdmem != nil {
-		arrs = make([]smt.ArrayInt32, len(rdmem.arrs))
-		copy(arrs, rdmem.arrs)
-		for k, v := range rdmem.valid {
-			valid[k] = v
+func NewMemory() *Memory {
+	return &Memory{
+		mem:   hashmap.New[int32, smt.Int32](1024, generic.Equals[int32], generic.HashInt32),
+		arrs:  nil,
+		valid: hashset.New[int32](64, generic.Equals[int32], generic.HashInt32),
+	}
+}
+
+func (m *Memory) Copy() *Memory {
+	arrs := make([]smt.ArrayInt32, len(m.arrs))
+	copy(arrs, m.arrs)
+
+	return &Memory{
+		mem:   m.mem.Copy(),
+		arrs:  arrs,
+		valid: m.valid.Copy(),
+	}
+}
+
+func (m *Memory) WriteWord(addr, val smt.Int32, s *smt.Solver) bool {
+	return m.write(addr.Srl(smt.Int32{C: 2}, s), val, s)
+}
+
+func (m *Memory) WriteBytes(addr uint32, data []byte, s *smt.Solver) bool {
+	for len(data) > 0 {
+		if addr%4 == 0 && len(data) >= 4 {
+			v := binary.LittleEndian.Uint32(data)
+			ok := m.WriteWord(smt.Int32{C: int32(addr)}, smt.Int32{C: int32(v)}, s)
+			if !ok {
+				return false
+			}
+			data = data[4:]
+			addr += 4
+		} else {
+			v := data[0]
+			ok := m.Write8(smt.Int32{C: int32(addr)}, smt.Int32{C: int32(v)}, s)
+			if !ok {
+				return false
+			}
+			data = data[1:]
+			addr++
 		}
 	}
-	return &Memory{
-		rdmem: rdmem,
-		mem:   make(map[int32]smt.Int32),
-		arrs:  arrs,
-		valid: valid,
+	return true
+}
+
+func (m *Memory) ReadWord(addr smt.Int32, s *smt.Solver) (smt.Int32, bool) {
+	return m.read(addr.Srl(smt.Int32{C: 2}, s), s)
+}
+
+func (m *Memory) ReadBytes(addr uint32, data []byte, s *smt.Solver) bool {
+	for len(data) > 0 {
+		if addr%4 == 0 && len(data) >= 4 {
+			v, ok := m.ReadWord(smt.Int32{C: int32(addr)}, s)
+			if !ok || !v.Concrete() {
+				return false
+			}
+			binary.LittleEndian.PutUint32(data, uint32(v.C))
+			data = data[4:]
+			addr += 4
+		} else {
+			v, ok := m.Read8u(smt.Int32{C: int32(addr)}, s)
+			if !ok || !v.Concrete() {
+				return false
+			}
+			data[0] = byte(v.C)
+			addr++
+			data = data[1:]
+		}
 	}
+	return true
 }
 
 type tmpval struct {
@@ -45,13 +95,13 @@ type tmpval struct {
 	val smt.Int32
 }
 
-// AddArray registers the region [base,base+length) as a symbolic address
-// region. Note that base and length are word addresses.
-func (m *Memory) AddArray(s *smt.Solver, base uint32, length uint32) {
+// MakeSymAddrRegion marks the given region as a region of memory that can be
+// symbolically addressed.
+func (m *Memory) MakeSymAddrRegion(base, length uint32, s *smt.Solver) {
 	vals := make([]tmpval, 0, length)
 	for i := base; i < base+length; i++ {
-		v, ok := m.mem[int32(i)]
-		m.valid[int32(i)] = struct{}{}
+		v, ok := m.mem.Get(int32(i))
+		m.valid.Put(int32(i))
 		if ok {
 			vals = append(vals, tmpval{
 				idx: i,
@@ -65,68 +115,21 @@ func (m *Memory) AddArray(s *smt.Solver, base uint32, length uint32) {
 	}
 }
 
-func (m *Memory) writeInit(idx, val smt.Int32, s *smt.Solver) bool {
-	return m.writeVal(idx, val, s, true)
-}
-func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
-	return m.writeVal(idx, val, s, false)
-}
-
-// Keys returns all concrete addresses with values in sorted order.
-func (m *Memory) Keys() []int32 {
-	keysmap := m.keys()
-	keys := make([]int32, 0, len(keysmap))
-	for k := range keysmap {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i] < keys[j]
-	})
-	return keys
-}
-
-func (m *Memory) keys() map[int32]struct{} {
-	if m == nil {
-		return nil
-	}
-	keys := make(map[int32]struct{})
-	for k := range m.mem {
-		keys[k] = struct{}{}
-	}
-	rdkeys := m.rdmem.keys()
-	for k := range rdkeys {
-		keys[k] = struct{}{}
-	}
-	return keys
-}
-
-func (m *Memory) readmem(idx int32) (smt.Int32, bool) {
-	if m == nil {
-		return smt.Int32{}, false
-	}
-	if v, ok := m.mem[idx]; ok {
-		return v, true
-	}
-	return m.rdmem.readmem(idx)
-}
-
 // returns the value at idx, or false if it does not exist
 func (m *Memory) read(idx smt.Int32, s *smt.Solver) (smt.Int32, bool) {
 	for _, a := range m.arrs {
 		if a.InBounds(idx, s) {
-			if idx.Concrete() {
-				if _, ok := m.valid[idx.C]; ok {
-					return m.readmem(idx.C)
-				}
+			if idx.Concrete() && m.valid.Has(idx.C) {
+				return m.mem.Get(idx.C)
 			}
-
 			return a.Read(idx, s), true
 		}
 	}
+
 	if !idx.Concrete() {
 		return smt.Int32{}, false
 	}
-	return m.readmem(idx.C)
+	return m.mem.Get(idx.C)
 }
 
 // identical to read but returns the zero value of smt.Int32 if not found
@@ -135,16 +138,27 @@ func (m *Memory) readz(idx smt.Int32, s *smt.Solver) smt.Int32 {
 	return v
 }
 
+func (m *Memory) write(idx, val smt.Int32, s *smt.Solver) bool {
+	return m.writeVal(idx, val, s, false)
+}
+
+func (m *Memory) writeInit(idx, val smt.Int32, s *smt.Solver) bool {
+	return m.writeVal(idx, val, s, true)
+}
+
 // attempt to write val at idx; returns false if the access is out of bounds
 // (only possible when using a symbolic address).
+// init indicates that this is an initial write to a symbolic memory.
 func (m *Memory) writeVal(idx, val smt.Int32, s *smt.Solver, init bool) bool {
 	for i := range m.arrs {
 		if m.arrs[i].InBounds(idx, s) {
 			if idx.Concrete() {
-				if _, ok := m.valid[idx.C]; ok {
+				if m.valid.Has(idx.C) {
 					v, ok := m.read(idx, s)
 					if !ok || init {
-						m.mem[idx.C] = val
+						// put the value at a concrete address in the concrete
+						// memory and in the symbolic array memory.
+						m.mem.Put(idx.C, val)
 						m.arrs[i].WriteInitial(idx, val, s)
 						return true
 					}
@@ -152,18 +166,23 @@ func (m *Memory) writeVal(idx, val smt.Int32, s *smt.Solver, init bool) bool {
 						return true
 					}
 				}
-				m.mem[idx.C] = val
-				m.valid[idx.C] = struct{}{}
-				// even if the address is concrete we still need to perform a
-				// symbolic write because in the future there may be a read
-				// with a symbolic address
+				// put the value at the concrete address and indicate that we
+				// have a valid value at this concrete address
+				m.mem.Put(idx.C, val)
+				m.valid.Put(idx.C)
 			} else {
-				for k := range m.valid {
+				// the index is symbolic so we must invalidate all concrete
+				// indexes within the associated symbolic array.
+				m.valid.Each(func(k int32) {
 					if m.arrs[i].InBounds(smt.Int32{C: k}, s) {
-						delete(m.valid, k)
+						m.valid.Remove(k)
 					}
-				}
+				})
 			}
+
+			// Note: even if the address is concrete we still need to perform a
+			// symbolic write because in the future there may be a read
+			// with a symbolic address
 
 			m.arrs[i].Write(idx, val, s)
 			return true
@@ -172,14 +191,8 @@ func (m *Memory) writeVal(idx, val smt.Int32, s *smt.Solver, init bool) bool {
 	if !idx.Concrete() {
 		return false
 	}
-	m.mem[idx.C] = val
+	m.mem.Put(idx.C, val)
 	return true
-}
-
-// Write32 writes a 32 bit value at addr. Returns false if the access is out of
-// bounds.
-func (m *Memory) Write32(addr, val smt.Int32, s *smt.Solver) bool {
-	return m.write(addr.Srl(smt.Int32{C: 2}, s), val, s)
 }
 
 // Write16 writes a 16-bit value (truncated) at addr. Returns false if the
@@ -207,12 +220,6 @@ func (m *Memory) Write8(addr, val smt.Int32, s *smt.Solver) bool {
 	wrmask := smt.Int32{C: 0x000000ff}.Sll(wrb, s).Not(s)
 	idx := addr.Srl(smt.Int32{C: 2}, s)
 	return m.write(idx, m.readz(idx, s).And(wrmask, s).Or(wrword, s), s)
-}
-
-// Read32 reads the 32-bit value at addr. Returns false if not found.
-func (m *Memory) Read32(addr smt.Int32, s *smt.Solver) (smt.Int32, bool) {
-	idx := addr.Srl(smt.Int32{C: 2}, s)
-	return m.read(idx, s)
 }
 
 // Read16 reads the 16-bit value at addr. Returns false if not found.

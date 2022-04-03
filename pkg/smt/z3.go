@@ -12,7 +12,6 @@ import (
 type Solver struct {
 	ctx    *z3.Context
 	solver *z3.Solver
-	stack  *stack
 
 	sorts
 }
@@ -47,23 +46,19 @@ func NewSolver() *Solver {
 		ctx:    ctx,
 		solver: z3.NewSolver(ctx),
 		sorts:  initSorts(ctx),
-		stack:  newStack(),
 	}
 }
 
 func (s *Solver) Push() {
 	s.solver.Push()
-	s.stack.push()
 }
 
 func (s *Solver) Pop() {
 	s.solver.Pop()
-	s.stack.pop()
 }
 
 func (s *Solver) Assert(b Bool) {
 	s.solver.Assert(b.Sym(s).Bool)
-	s.stack.add(b)
 }
 
 func (s *Solver) Check(model bool) CheckResult {

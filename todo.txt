@@ -1,7 +1,0 @@
-use constraints for array for z3 (why is z3 slow with .Sym?)
-concretize jalr and some memory accesses
-array access annotation?
-keep stack of assertions and list for each path
-
-CSR and interrupt support
-unaligned loads and stores

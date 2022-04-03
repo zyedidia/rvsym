@@ -29,6 +29,13 @@ func (e ExitStatus) String() string {
 	return "quiet"
 }
 
+type EmuMode byte
+
+const (
+	EmuLinux = iota
+	EmuBareMetal
+)
+
 // control code definitions
 
 const (
@@ -52,20 +59,6 @@ const (
 	ExtWord  = 0b010
 	ExtByteU = 0b100
 	ExtHalfU = 0b101
-)
-
-const (
-	SymElapseNs = iota
-	SymFail
-	SymPrint
-	SymExit
-	SymQuietExit
-	SymMarkBytes
-	SymMarkOutput
-	SymMarkArray
-	SymSnapshot
-	SymTraceReset
-	SymSnapshotEq
 )
 
 const (

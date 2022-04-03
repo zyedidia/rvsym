@@ -3,7 +3,6 @@ package rvsym
 import (
 	"bytes"
 	"debug/elf"
-	"encoding/binary"
 	"fmt"
 	"io"
 
@@ -12,33 +11,30 @@ import (
 
 type Segment struct {
 	addr uint32
-	data []uint32
+	data []byte
 }
 
 type Loader interface {
-	Load(data []byte) (segs []Segment, entrypc uint32, err error)
+	Load(data []byte) (segs []Segment, entry uint32, err error)
 }
 
-// A BinaryLoader loads a single blob of data, maps it at address 0, and uses an
-// entry point of 0.
-type BinaryLoader struct {
+type RawLoader struct {
 	Entry uint32
 }
 
-func (b *BinaryLoader) Load(data []byte) ([]Segment, uint32, error) {
+func (l *RawLoader) Load(data []byte) ([]Segment, uint32, error) {
 	seg := Segment{
-		addr: b.Entry,
+		addr: l.Entry,
+		data: data,
 	}
-
-	seg.data = toWords(data)
-	return []Segment{seg}, b.Entry, nil
+	return []Segment{seg}, l.Entry, nil
 }
 
-type IntelHexLoader struct {
+type IHexLoader struct {
 	Entry uint32
 }
 
-func (l *IntelHexLoader) Load(data []byte) ([]Segment, uint32, error) {
+func (l *IHexLoader) Load(data []byte) ([]Segment, uint32, error) {
 	mem := gohex.NewMemory()
 	if err := mem.ParseIntelHex(bytes.NewReader(data)); err != nil {
 		return nil, 0, err
@@ -48,7 +44,7 @@ func (l *IntelHexLoader) Load(data []byte) ([]Segment, uint32, error) {
 	for i, segment := range hexsegs {
 		segs[i] = Segment{
 			addr: segment.Address,
-			data: toWords(segment.Data),
+			data: segment.Data,
 		}
 	}
 	return segs, l.Entry, nil
@@ -56,7 +52,7 @@ func (l *IntelHexLoader) Load(data []byte) ([]Segment, uint32, error) {
 
 type ElfLoader struct{}
 
-func (e *ElfLoader) Load(data []byte) ([]Segment, uint32, error) {
+func (l *ElfLoader) Load(data []byte) ([]Segment, uint32, error) {
 	r := bytes.NewReader(data)
 	f, err := elf.NewFile(r)
 	if err != nil {
@@ -81,23 +77,10 @@ func (e *ElfLoader) Load(data []byte) ([]Segment, uint32, error) {
 
 			segs = append(segs, Segment{
 				addr: uint32(p.Vaddr),
-				data: toWords(data),
+				data: data,
 			})
 		}
 	}
 
 	return segs, uint32(f.Entry), nil
-}
-
-func toWords(data []byte) []uint32 {
-	words := make([]uint32, 0, len(data)/4)
-	i := 0
-	for i < len(data) {
-		var ui uint32
-		buf := bytes.NewReader(data[i:])
-		binary.Read(buf, binary.LittleEndian, &ui)
-		words = append(words, ui)
-		i += int(buf.Size()) - buf.Len()
-	}
-	return words
 }
