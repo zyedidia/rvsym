@@ -16,9 +16,6 @@ func Restore(cp *Checkpoint, s *smt.Solver) *Machine {
 	s.Assert(cp.cond)
 	return &Machine{
 		mstate: cp.mstate,
-		icache: cache{
-			data: make([]byte, 0, 1024),
-		},
 	}
 	return nil
 }

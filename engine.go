@@ -38,6 +38,13 @@ func NewEngine(segs []Segment, entry uint32, mode EmuMode) *Engine {
 
 	machine := NewMachine(int32(entry), mem)
 
+	if len(segs) > 0 {
+		machine.icache = cache{
+			base: segs[0].addr,
+			data: segs[0].data,
+		}
+	}
+
 	if mode == EmuLinux {
 		// linux mode: use an initial stack pointer and point it at argc (0).
 		sp := int32(0x7ffff00)

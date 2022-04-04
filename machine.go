@@ -1,17 +1,17 @@
 package rvsym
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/deadsy/rvda"
 	"github.com/zyedidia/rvsym/bits"
 	"github.com/zyedidia/rvsym/pkg/smt"
+	"github.com/zyedidia/rvsym/rvc"
 )
 
 type Machine struct {
 	mstate
-
-	icache cache
 
 	Status Status
 }
@@ -26,6 +26,8 @@ type mstate struct {
 	regs    []smt.Int32
 	mem     *Memory
 	symvals []SymVal
+
+	icache cache
 }
 
 type SymVal struct {
@@ -74,9 +76,9 @@ func NewMachine(pc int32, mem *Memory) *Machine {
 			pc:   pc,
 			regs: make([]smt.Int32, 32),
 			mem:  mem,
-		},
-		icache: cache{
-			data: make([]byte, 0, 1024),
+			icache: cache{
+				data: make([]byte, 0, 1024),
+			},
 		},
 	}
 }
@@ -100,29 +102,71 @@ func (m *Machine) RegConc(reg uint32) (int32, bool) {
 	return 0, false
 }
 
-func (m *Machine) prefetch(s *smt.Solver) {
-
-}
-
 var isa *rvda.ISA
 
 func init() {
 	isa, _ = rvda.New(32, rvda.RV32gc)
 }
 
+func (m *Machine) fetchC(s *smt.Solver) (uint32, bool, error) {
+	if uint32(m.pc) >= m.icache.base && uint32(m.pc)+3 < m.icache.base+uint32(len(m.icache.data)) {
+		// pc in icache
+		insn := binary.LittleEndian.Uint16(m.icache.data[uint32(m.pc)-m.icache.base:])
+		decoded, compressed, illegal := rvc.Decompress(uint32(insn))
+
+		if illegal {
+			return decoded, compressed, fmt.Errorf("illegal instruction")
+		} else if !compressed {
+			insn := binary.LittleEndian.Uint32(m.icache.data[uint32(m.pc)-m.icache.base:])
+			return insn, false, nil
+		}
+		return decoded, true, nil
+	}
+
+	// not in cache -- read 16-bit value and following 16-bit if not compressed
+	lword, ok := m.mem.Read16u(smt.Int32{C: m.pc}, s)
+	if !ok {
+		return 0, false, fmt.Errorf("program counter out of bounds: %x", m.pc)
+	} else if !lword.Concrete() {
+		return 0, false, fmt.Errorf("cannot execute symbolic instruction")
+	}
+
+	decoded, compressed, illegal := rvc.Decompress(uint32(lword.C))
+
+	if illegal {
+		return decoded, compressed, fmt.Errorf("illegal instruction")
+	} else if !compressed {
+		uword, ok := m.mem.Read16u(smt.Int32{C: m.pc + 2}, s)
+		if !ok {
+			return 0, false, fmt.Errorf("program counter out of bounds: %x", m.pc)
+		} else if !uword.Concrete() {
+			return 0, false, fmt.Errorf("cannot execute symbolic instruction")
+		}
+		decoded = (uint32(uword.C) << 16) | uint32(lword.C)
+	}
+
+	return decoded, compressed, nil
+}
+
 func (m *Machine) fetch(s *smt.Solver) (uint32, bool, error) {
+	if uint32(m.pc) >= m.icache.base && uint32(m.pc)+3 < m.icache.base+uint32(len(m.icache.data)) {
+		// pc in icache
+		insn := binary.LittleEndian.Uint32(m.icache.data[uint32(m.pc)-m.icache.base:])
+		return insn, false, nil
+	}
+
 	word, ok := m.mem.ReadWord(smt.Int32{C: m.pc}, s)
 	if !ok {
 		return 0, false, fmt.Errorf("program counter out of bounds")
 	} else if !word.Concrete() {
 		return 0, false, fmt.Errorf("cannot execute symbolic instruction")
 	}
-	// fmt.Println(isa.Disassemble(uint(m.pc), uint(word.C)))
 	return uint32(word.C), false, nil
 }
 
 func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 	insn, compressed, err := m.fetch(s)
+	// fmt.Println(isa.Disassemble(uint(m.pc), uint(insn)))
 
 	if compressed {
 		isz = 2
