@@ -16,3 +16,5 @@ out.txt
 /pkg/smt/deps
 obj_dir
 *.d
+sim.x86
+.verilator*
