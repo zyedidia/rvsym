@@ -27,6 +27,7 @@ func (m *Machine) Checkpoint(cond smt.Bool) *Checkpoint {
 			mem:     m.mem.Copy(),
 			symvals: make([]SymVal, len(m.symvals)),
 			pc:      m.pc,
+			sys:     m.sys.Copy(),
 		},
 		cond: cond,
 	}

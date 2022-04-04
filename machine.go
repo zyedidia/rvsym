@@ -27,6 +27,8 @@ type mstate struct {
 	mem     *Memory
 	symvals []SymVal
 
+	sys *SysState
+
 	icache cache
 }
 
@@ -76,9 +78,7 @@ func NewMachine(pc int32, mem *Memory) *Machine {
 			pc:   pc,
 			regs: make([]smt.Int32, 32),
 			mem:  mem,
-			icache: cache{
-				data: make([]byte, 0, 1024),
-			},
+			sys:  NewSysState(0x100000),
 		},
 	}
 }
@@ -382,6 +382,7 @@ func (m *Machine) rdstr(ptr uint32, s *smt.Solver) ([]byte, error) {
 			break
 		}
 		result = append(result, buf[0])
+		ptr++
 	}
 	return result, nil
 }

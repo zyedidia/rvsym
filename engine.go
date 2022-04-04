@@ -179,13 +179,20 @@ func (e *Engine) Summary() string {
 
 func toWords(data []byte) []uint32 {
 	words := make([]uint32, 0, len(data)/4)
-	i := 0
-	for i < len(data) {
-		var ui uint32
-		buf := bytes.NewReader(data[i:])
-		binary.Read(buf, binary.LittleEndian, &ui)
-		words = append(words, ui)
-		i += int(buf.Size()) - buf.Len()
+	for len(data) > 0 {
+		if len(data) >= 4 {
+			words = append(words, binary.LittleEndian.Uint32(data))
+			data = data[4:]
+		} else {
+			if len(data) == 3 {
+				words = append(words, uint32(data[0])|uint32(data[1])<<8|uint32(data[2])<<16)
+			} else if len(data) == 2 {
+				words = append(words, uint32(data[0])|uint32(data[1])<<8)
+			} else {
+				words = append(words, uint32(data[0]))
+			}
+			data = data[len(data):]
+		}
 	}
 	return words
 }

@@ -1,4 +1,5 @@
 #include "rvsym.h"
+#include <stdio.h>
 
 int main() {
     int x;
@@ -7,6 +8,8 @@ int main() {
     if (x == 42) {
         rvsym_fail();
     }
+
+    printf("Hello world\n");
 
     return 0;
 }

@@ -20,12 +20,31 @@ var syscalls = map[int]EcallFn{
 	214:  (*Machine).SysBrk,
 }
 
+type SysState struct {
+	fdtbl FdTable
+	brk   uint32
+}
+
+func NewSysState(brk uint32) *SysState {
+	return &SysState{
+		fdtbl: NewFdTable(),
+		brk:   brk,
+	}
+}
+
+func (s *SysState) Copy() *SysState {
+	return &SysState{
+		fdtbl: s.fdtbl.Copy(),
+		brk:   s.brk,
+	}
+}
+
 type FdTable struct {
 	files map[int]*os.File
 }
 
-func NewFdTable() *FdTable {
-	return &FdTable{
+func NewFdTable() FdTable {
+	return FdTable{
 		files: map[int]*os.File{
 			0: os.Stdin,
 			1: os.Stdout,
@@ -34,12 +53,12 @@ func NewFdTable() *FdTable {
 	}
 }
 
-func (t *FdTable) Copy() *FdTable {
+func (t FdTable) Copy() FdTable {
 	files := make(map[int]*os.File)
 	for k, v := range t.files {
 		files[k] = v
 	}
-	return &FdTable{
+	return FdTable{
 		files: files,
 	}
 }
@@ -49,23 +68,58 @@ func (m *Machine) SysExit(s *smt.Solver) {
 }
 
 func (m *Machine) SysWrite(s *smt.Solver) {
-	fmt.Println("TODO: SysWrite")
+	if fd, ok := m.RegConc(10); !ok {
+		m.err(fmt.Errorf("symbolic fd"))
+		return
+	} else if buf, ok := m.RegConc(11); !ok {
+		m.err(fmt.Errorf("symbolic buf"))
+		return
+	} else if count, ok := m.RegConc(12); !ok {
+		m.err(fmt.Errorf("symbolic count"))
+		return
+	} else {
+		if f, ok := m.sys.fdtbl.files[int(fd)]; !ok {
+			m.err(fmt.Errorf("invalid fd %d", fd))
+			return
+		} else {
+			b := make([]byte, count)
+			err := m.rdbytes(uint32(buf), b, s)
+			if err != nil {
+				m.err(err)
+				return
+			}
+			n, err := f.Write(b)
+			if err != nil {
+				m.WriteReg(10, smt.Int32{C: -1})
+			} else {
+				m.WriteReg(10, smt.Int32{C: int32(n)})
+			}
+		}
+	}
 }
 
 func (m *Machine) SysClose(s *smt.Solver) {
-	// if fd, ok := m.RegConc(10); !ok {
-	// 	m.err(fmt.Errorf("symbolic fd"))
-	// 	return
-	// } else {
-	// 	if f, ok := m.fdtbl.files[fd]; ok {
-	// 		f.Close()
-	// 	}
-	// 	delete(m.fdtbl.files, fd)
-	// }
+	if fd, ok := m.RegConc(10); !ok {
+		m.err(fmt.Errorf("symbolic fd"))
+		return
+	} else {
+		if f, ok := m.sys.fdtbl.files[int(fd)]; ok {
+			f.Close()
+		}
+		delete(m.sys.fdtbl.files, int(fd))
+	}
 }
 
 func (m *Machine) SysFstat(s *smt.Solver) {
-	fmt.Println("TODO: SysFstat")
+	if buf, ok := m.RegConc(11); !ok {
+		m.err(fmt.Errorf("symbolic fd"))
+		return
+	} else {
+		for i := int32(0); i < 112; i += 4 {
+			m.mem.WriteWord(smt.Int32{C: buf + i}, smt.Int32{C: 0}, s)
+		}
+		m.WriteReg(10, smt.Int32{C: 0})
+	}
 }
 
 func (m *Machine) SysLseek(s *smt.Solver) {
@@ -81,5 +135,13 @@ func (m *Machine) SysRead(s *smt.Solver) {
 }
 
 func (m *Machine) SysBrk(s *smt.Solver) {
-	fmt.Println("TODO: SysBrk")
+	if addr, ok := m.RegConc(10); !ok {
+		m.err(fmt.Errorf("symbolic addr"))
+		return
+	} else {
+		if addr != 0 {
+			m.sys.brk = uint32(addr)
+		}
+		m.WriteReg(10, smt.Int32{C: int32(m.sys.brk)})
+	}
 }

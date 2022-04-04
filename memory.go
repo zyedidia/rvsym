@@ -69,23 +69,23 @@ func (m *Memory) ReadWord(addr smt.Int32, s *smt.Solver) (smt.Int32, bool) {
 
 func (m *Memory) ReadBytes(addr uint32, data []byte, s *smt.Solver) bool {
 	for len(data) > 0 {
-		if addr%4 == 0 && len(data) >= 4 {
-			v, ok := m.ReadWord(smt.Int32{C: int32(addr)}, s)
-			if !ok || !v.Concrete() {
-				return false
-			}
-			binary.LittleEndian.PutUint32(data, uint32(v.C))
-			data = data[4:]
-			addr += 4
-		} else {
-			v, ok := m.Read8u(smt.Int32{C: int32(addr)}, s)
-			if !ok || !v.Concrete() {
-				return false
-			}
-			data[0] = byte(v.C)
-			addr++
-			data = data[1:]
+		// if addr%4 == 0 && len(data) >= 4 {
+		// 	v, ok := m.ReadWord(smt.Int32{C: int32(addr)}, s)
+		// 	if !ok || !v.Concrete() {
+		// 		return false
+		// 	}
+		// 	binary.LittleEndian.PutUint32(data, uint32(v.C))
+		// 	data = data[4:]
+		// 	addr += 4
+		// } else {
+		v, ok := m.Read8u(smt.Int32{C: int32(addr)}, s)
+		if !ok || !v.Concrete() {
+			return false
 		}
+		data[0] = byte(v.C)
+		addr++
+		data = data[1:]
+		// }
 	}
 	return true
 }
