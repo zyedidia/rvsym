@@ -1,4 +1,5 @@
 #include "rvsym.h"
+#include <stdlib.h>
 
 static int matchhere(char*,char*);
 
@@ -41,11 +42,11 @@ int match(char *re, char *text) {
 
 int main() {
     // The input regular expression.
-    char re[SIZE];
+    char* re = malloc(SIZE);
 
     // Make the input symbolic. 
-    rvsym_mark_bytes(re, sizeof re, "re");
-    re[SIZE-1] = '\0';
+    rvsym_mark_bytes(re, SIZE, "re");
+    /* re[SIZE-1] = '\0'; */
 
     // Try to match against a constant string "hello".
     match(re, "hello");
