@@ -33,6 +33,10 @@ type SymVal struct {
 	name string
 }
 
+func (m *Machine) markSym(val smt.Int32, name string) {
+	m.symvals = append(m.symvals, SymVal{val, name})
+}
+
 type Branch struct {
 	pc   int32
 	cond smt.Bool
@@ -336,4 +340,21 @@ func (m *Machine) rdstr(ptr uint32, s *smt.Solver) ([]byte, error) {
 		result = append(result, buf[0])
 	}
 	return result, nil
+}
+
+func (m *Machine) wrsym(addr uint32, length uint32, name string, s *smt.Solver) {
+	i := addr
+	for i < addr+length {
+		i32 := s.AnyInt32()
+		if i%4 == 0 && length-i >= 4 {
+			m.markSym(i32, fmt.Sprintf("%s[%d:%d]", name, i+3-addr, i-addr))
+			m.mem.WriteWord(smt.Int32{C: int32(i)}, i32, s)
+			i += 4
+		} else {
+			s.Assert(i32.And(smt.Int32{C: ^0x0ff}, s).Eqz(s))
+			m.markSym(i32, fmt.Sprintf("%s[%d]", name, i-addr))
+			m.mem.Write8(smt.Int32{C: int32(i)}, i32, s)
+			i++
+		}
+	}
 }
