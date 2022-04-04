@@ -32,7 +32,7 @@ func (e ExitStatus) String() string {
 type EmuMode byte
 
 const (
-	EmuLinux = iota
+	EmuLinux EmuMode = iota
 	EmuBareMetal
 )
 

@@ -3,6 +3,7 @@ package rvsym
 import (
 	"fmt"
 
+	"github.com/deadsy/rvda"
 	"github.com/zyedidia/rvsym/bits"
 	"github.com/zyedidia/rvsym/pkg/smt"
 )
@@ -99,8 +100,21 @@ func (m *Machine) prefetch(s *smt.Solver) {
 
 }
 
+var isa *rvda.ISA
+
+func init() {
+	isa, _ = rvda.New(32, rvda.RV32gc)
+}
+
 func (m *Machine) fetch(s *smt.Solver) (uint32, bool, error) {
-	return 0, false, nil
+	word, ok := m.mem.ReadWord(smt.Int32{C: m.pc}, s)
+	if !ok {
+		return 0, false, fmt.Errorf("program counter out of bounds")
+	} else if !word.Concrete() {
+		return 0, false, fmt.Errorf("cannot execute symbolic instruction")
+	}
+	// fmt.Println(isa.Disassemble(uint(m.pc), uint(word.C)))
+	return uint32(word.C), false, nil
 }
 
 func (m *Machine) Exec(s *smt.Solver) (isz int32) {
@@ -158,8 +172,8 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 	return isz
 }
 
-func (m *Machine) ecall(reg int, ecalls map[int]EcallFn, s *smt.Solver) {
-	if num, ok := m.RegConc(10); ok {
+func (m *Machine) ecall(reg uint32, ecalls map[int]EcallFn, s *smt.Solver) {
+	if num, ok := m.RegConc(reg); ok {
 		if fn, ok := ecalls[int(num)]; ok {
 			fn(m, s)
 		} else {
