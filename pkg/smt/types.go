@@ -399,5 +399,5 @@ func (a *ArrayInt32) Write(idx, val Int32, s *Solver) {
 }
 
 func (a *ArrayInt32) WriteInitial(idx, val Int32, s *Solver) {
-	a.S = a.S.StoreWithSelect(idx.Sym(s), val.Sym(s), s)
+	a.S = a.S.Store(idx.Sym(s), val.Sym(s), s)
 }
