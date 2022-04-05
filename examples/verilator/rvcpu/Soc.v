@@ -44,7 +44,7 @@ module RegFile(
 `ifdef RANDOMIZE_MEM_INIT
   reg [31:0] _RAND_0;
 `endif // RANDOMIZE_MEM_INIT
-  reg [31:0] regs [0:31]; // @[RegFile.scala 21:17]
+  reg [31:0] regs [0:31] /*verilator public*/; // @[RegFile.scala 21:17]
   wire  regs_io_rdata1_MPORT_en; // @[RegFile.scala 21:17]
   wire [4:0] regs_io_rdata1_MPORT_addr; // @[RegFile.scala 21:17]
   wire [31:0] regs_io_rdata1_MPORT_data; // @[RegFile.scala 21:17]

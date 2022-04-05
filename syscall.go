@@ -104,7 +104,7 @@ func (m *Machine) SysClose(s *smt.Solver) {
 		m.err(fmt.Errorf("symbolic fd"))
 		return
 	} else {
-		if f, ok := m.sys.fdtbl.files[int(fd)]; ok {
+		if f, ok := m.sys.fdtbl.files[int(fd)]; ok && fd >= 3 {
 			f.Close()
 		}
 		delete(m.sys.fdtbl.files, int(fd))

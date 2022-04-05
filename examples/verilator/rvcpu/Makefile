@@ -4,7 +4,7 @@ PREFIX=riscv64-unknown-elf
 endif
 
 CXX=$(PREFIX)-g++
-CXXFLAGS=-march=rv32im -mabi=ilp32
+CXXFLAGS=-g -march=rv32im -mabi=ilp32 -I$(RVSYM_ROOT)/include
 
 TOP=Soc
 SRC=Soc.v
@@ -16,7 +16,7 @@ all: sim.elf
 .PHONY: all
 
 $(VERILATOR_DIR): $(SRC)
-	verilator -cc -sv --Mdir $(VERILATOR_DIR) $^
+	verilator -O2 -cc -sv --Mdir $(VERILATOR_DIR) $^
 
 $(VERILATOR_DIR)/verilated.o: $(VERILATOR_DIR)
 	make -C $(VERILATOR_DIR) -f V$(TOP).mk CXX=$(CXX) CXXFLAGS='$(CXXFLAGS)' verilated.o

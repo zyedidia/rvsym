@@ -166,7 +166,6 @@ func (m *Machine) fetch(s *smt.Solver) (uint32, bool, error) {
 
 func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 	insn, compressed, err := m.fetch(s)
-	// fmt.Println(isa.Disassemble(uint(m.pc), uint(insn)))
 
 	if compressed {
 		isz = 2
