@@ -63,7 +63,6 @@ func main() {
 	must("read", err)
 
 	mode := rvsym.EmuBareMetal
-	elf := opts.Elf
 
 	var loader rvsym.Loader
 	if strings.HasSuffix(args[0], ".hex") {
@@ -76,7 +75,7 @@ func main() {
 		}
 	} else {
 		loader = &rvsym.ElfLoader{}
-		elf = args[0]
+		opts.Elf = args[0]
 		mode = rvsym.EmuLinux
 	}
 
@@ -86,7 +85,7 @@ func main() {
 	eng := rvsym.NewEngine(segs, entry, mode)
 
 	converter := &addr2line.Converter{
-		Elf: elf,
+		Elf: opts.Elf,
 	}
 
 	showtc := func(eng *rvsym.Engine, last int) int {
@@ -97,10 +96,8 @@ func main() {
 			str := fmt.Sprintf("0x%x", uint32(tc.Pc))
 			if opts.Elf != "" {
 				pos, err := converter.Lookup(uint32(tc.Pc))
-				if err != nil {
-					log.Println(err)
-				} else {
-					str = pos.String()
+				if err == nil {
+					str = fmt.Sprintf("%s (%s)", pos.String(), str)
 				}
 			}
 
