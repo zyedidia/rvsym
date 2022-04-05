@@ -1,6 +1,10 @@
 package rvsym
 
-import "github.com/zyedidia/rvsym/pkg/smt"
+import (
+	"fmt"
+
+	"github.com/zyedidia/rvsym/pkg/smt"
+)
 
 type AluOp int
 
@@ -38,6 +42,7 @@ func (m *Machine) alu(a, b smt.Int32, op AluOp, s *smt.Solver) smt.Int32 {
 	case AluXor:
 		return a.Xor(b, s)
 	case AluSll:
+		fmt.Println(b)
 		return a.Sll(b, s)
 	case AluSrl:
 		return a.Srl(b, s)

@@ -6,8 +6,8 @@ endif
 CXX=$(PREFIX)-g++
 CXXFLAGS=-march=rv32im -mabi=ilp32
 
-TOP=counter
-SRC=counter.sv
+TOP=Soc
+SRC=Soc.v
 
 VERILATOR_DIR=.verilator
 
@@ -36,4 +36,3 @@ sim.x86: $(SRC) sim.cc
 clean:
 	rm -rf $(VERILATOR_DIR) $(VERILATOR_DIR)-x86
 	rm -f *.o *.d *.elf
-

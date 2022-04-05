@@ -2,6 +2,7 @@ package rvsym
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/zyedidia/rvsym/pkg/smt"
@@ -123,15 +124,86 @@ func (m *Machine) SysFstat(s *smt.Solver) {
 }
 
 func (m *Machine) SysLseek(s *smt.Solver) {
-	fmt.Println("TODO: SysLseek")
+	if fd, ok := m.RegConc(10); !ok {
+		m.err(fmt.Errorf("symbolic fd"))
+		return
+	} else if offset, ok := m.RegConc(11); !ok {
+		m.err(fmt.Errorf("symbolic offset"))
+		return
+	} else if whence, ok := m.RegConc(12); !ok {
+		m.err(fmt.Errorf("symbolic whence"))
+		return
+	} else {
+		if f, ok := m.sys.fdtbl.files[int(fd)]; !ok {
+			m.err(fmt.Errorf("invalid fd %d", fd))
+			return
+		} else {
+			ret, err := f.Seek(int64(offset), int(whence))
+			if err != nil {
+				m.WriteReg(10, smt.Int32{C: -1})
+			} else {
+				m.WriteReg(10, smt.Int32{C: int32(ret)})
+			}
+		}
+	}
 }
 
 func (m *Machine) SysOpen(s *smt.Solver) {
-	fmt.Println("TODO: SysOpen")
+	if pathname, ok := m.RegConc(10); !ok {
+		m.err(fmt.Errorf("symbolic path name"))
+		return
+	} else if flags, ok := m.RegConc(11); !ok {
+		m.err(fmt.Errorf("symbolic flags"))
+		return
+	} else if mode, ok := m.RegConc(12); !ok {
+		m.err(fmt.Errorf("symbolic mode"))
+		return
+	} else {
+		path, err := m.rdstr(uint32(pathname), s)
+		if err != nil {
+			m.err(err)
+			return
+		}
+		file, err := os.OpenFile(string(path), int(flags), fs.FileMode(mode))
+		if err != nil {
+			m.WriteReg(10, smt.Int32{C: -1})
+			return
+		}
+
+		m.sys.fdtbl.files[int(file.Fd())] = file
+		m.WriteReg(10, smt.Int32{C: int32(file.Fd())})
+	}
 }
 
 func (m *Machine) SysRead(s *smt.Solver) {
-	fmt.Println("TODO: SysRead")
+	if fd, ok := m.RegConc(10); !ok {
+		m.err(fmt.Errorf("symbolic fd"))
+		return
+	} else if buf, ok := m.RegConc(11); !ok {
+		m.err(fmt.Errorf("symbolic buf"))
+		return
+	} else if count, ok := m.RegConc(12); !ok {
+		m.err(fmt.Errorf("symbolic count"))
+		return
+	} else {
+		if f, ok := m.sys.fdtbl.files[int(fd)]; !ok {
+			m.err(fmt.Errorf("invalid fd %d", fd))
+			return
+		} else {
+			b := make([]byte, count)
+			n, err := f.Read(b)
+			if err != nil {
+				m.WriteReg(10, smt.Int32{C: -1})
+				return
+			}
+			ok := m.mem.WriteBytes(uint32(buf), b[:n], s)
+			if !ok {
+				m.err(fmt.Errorf("invalid memory access during read syscall"))
+				return
+			}
+			m.WriteReg(10, smt.Int32{C: int32(n)})
+		}
+	}
 }
 
 func (m *Machine) SysBrk(s *smt.Solver) {
