@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
         cycle(dut);
     }
 
-    printf("%x\n", dut->Soc->bus_io_dev_0_ram->mem[0]);
+    printf("%x\n", dut->Soc->bus_io_dev_0_ram->mem[25]);
 
     return 0;
 }

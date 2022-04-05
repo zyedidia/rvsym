@@ -92,7 +92,7 @@ func (a Int32) Xor(b Int32, s *Solver) Int32 {
 }
 func (a Int32) Sll(b Int32, s *Solver) Int32 {
 	if a.Concrete() && b.Concrete() {
-		return Int32{C: a.C << b.C}
+		return Int32{C: a.C << uint32(b.C)}
 	}
 	if a.Concrete() && a.C == 0 {
 		return Int32{C: 0}
@@ -116,7 +116,7 @@ func (a Int32) Srl(b Int32, s *Solver) Int32 {
 }
 func (a Int32) Sra(b Int32, s *Solver) Int32 {
 	if a.Concrete() && b.Concrete() {
-		return Int32{C: a.C >> b.C}
+		return Int32{C: a.C >> uint32(b.C)}
 	}
 	if a.Concrete() && a.C == 0 {
 		return Int32{C: 0}
