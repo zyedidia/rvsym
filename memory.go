@@ -127,7 +127,11 @@ func (m *Memory) read(idx smt.Int32, s *smt.Solver) (smt.Int32, bool) {
 	}
 
 	if !idx.Concrete() {
-		return smt.Int32{}, false
+		cidx, ok := concretize(idx, s)
+		if !ok {
+			return smt.Int32{}, false
+		}
+		idx = smt.Int32{C: cidx}
 	}
 	return m.mem.Get(idx.C)
 }
@@ -189,7 +193,11 @@ func (m *Memory) writeVal(idx, val smt.Int32, s *smt.Solver, init bool) bool {
 		}
 	}
 	if !idx.Concrete() {
-		return false
+		cidx, ok := concretize(idx, s)
+		if !ok {
+			return false
+		}
+		idx = smt.Int32{C: cidx}
 	}
 	m.mem.Put(idx.C, val)
 	return true

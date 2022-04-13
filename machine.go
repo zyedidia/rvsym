@@ -402,3 +402,21 @@ func (m *Machine) wrsym(addr uint32, length uint32, name string, s *smt.Solver) 
 		}
 	}
 }
+
+func concretize(val smt.Int32, s *smt.Solver) (int32, bool) {
+	if val.Concrete() {
+		return val.C, true
+	}
+
+	res := s.Check(true)
+	if res != smt.Sat {
+		return 0, false
+	}
+
+	model := s.Model()
+	cval := model.Eval(val)
+	s.Assert(val.Eqb(smt.Int32{C: cval}, s))
+
+	logger.Printf("concretizing value -> %x\n", cval)
+	return cval, true
+}
