@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 
 	"github.com/zyedidia/generic"
-	"github.com/zyedidia/generic/hashmap"
 	"github.com/zyedidia/generic/hashset"
+	"github.com/zyedidia/rvsym/hashmap"
 	"github.com/zyedidia/rvsym/pkg/smt"
 )
 
@@ -29,8 +29,11 @@ func (m *Memory) Copy() *Memory {
 	arrs := make([]smt.ArrayInt32, len(m.arrs))
 	copy(arrs, m.arrs)
 
+	memmap := m.mem
+	m.mem = memmap.Copy()
+
 	return &Memory{
-		mem:   m.mem.Copy(),
+		mem:   memmap.Copy(),
 		arrs:  arrs,
 		valid: m.valid.Copy(),
 	}
