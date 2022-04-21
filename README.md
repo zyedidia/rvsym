@@ -34,7 +34,31 @@ environment variable to your installation).
 See the `./examples/basic` directory for a number of example programs. Compile with `make`,
 and then run the example of your choosing with `rvsym example.elf`.
 
-For example:
+For example, here is `get_sign.c`:
+
+```c
+#include "rvsym.h"
+
+int get_sign(int x) {
+    if (x == 0)
+        return 0;
+    else if (x < 0)
+        return -1;
+    else
+        return 1;
+}
+
+int main() {
+    int a;
+    rvsym_mark_bytes(&a, sizeof(a), "a");
+    int r = get_sign(a);
+    rvsym_exit();
+    return r;
+}
+```
+
+Now we compile with the RISC-V toolchain and execute the resulting ELF binary with `rvsym`.
+It finds three test cases that exercise each path in the `get_sign` function.
 
 ```
 $ make get_sign.elf
