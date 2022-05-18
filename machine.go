@@ -26,6 +26,7 @@ type mstate struct {
 	regs    []smt.Int32
 	mem     *Memory
 	symvals []SymVal
+	mode    EmuMode
 
 	sys *SysState
 
@@ -167,6 +168,8 @@ func (m *Machine) fetch(s *smt.Solver) (uint32, bool, error) {
 func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 	insn, compressed, err := m.fetch(s)
 
+	// fmt.Println(isa.Disassemble(uint(m.pc), uint(insn)))
+
 	if compressed {
 		isz = 2
 	} else {
@@ -183,11 +186,11 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 		return
 	case InsnEbreak:
 		// a0
-		m.ecall(10, symcalls, s)
+		m.ecall(Ra0, symcalls, s)
 		return
 	case InsnEcall:
 		// a7
-		m.ecall(17, syscalls, s)
+		m.ecall(Ra7, syscalls, s)
 		return
 	}
 
@@ -245,7 +248,8 @@ func (m *Machine) iarith(insn uint32, s *smt.Solver) {
 	} else {
 		imm = extractImm(insn, ImmTypeI)
 	}
-	m.WriteReg(rd(insn), m.alu(m.regs[rs1(insn)], smt.Int32{C: imm}, AluOp(op), s))
+	wr := m.alu(m.regs[rs1(insn)], smt.Int32{C: imm}, AluOp(op), s)
+	m.WriteReg(rd(insn), wr)
 }
 
 func (m *Machine) branch(insn uint32, s *smt.Solver) {
@@ -300,6 +304,11 @@ func (m *Machine) jalr(insn uint32, isz int32, s *smt.Solver) {
 	imm := extractImm(insn, ImmTypeI)
 	pc, ok := m.RegConc(rs1(insn))
 	if !ok {
+		if rs1(insn) == Rra {
+			m.exit(ExitQuiet)
+			return
+		}
+
 		m.err(fmt.Errorf("jalr target is symbolic"))
 		return
 	}
@@ -328,12 +337,17 @@ func (m *Machine) load(insn uint32, s *smt.Solver) {
 	}
 
 	if !valid {
-		if addr.Concrete() {
-			m.err(fmt.Errorf("out of bounds access at 0x%x", addr.C))
+		if m.mode == EmuUnderConstrained {
+			rdval = s.AnyInt32()
+			m.markSym(rdval, fmt.Sprintf("mem[%v]", addr))
 		} else {
-			m.err(fmt.Errorf("symbolic out of bounds access"))
+			if addr.Concrete() {
+				m.err(fmt.Errorf("out of bounds access at 0x%x", addr.C))
+			} else {
+				m.err(fmt.Errorf("symbolic out of bounds access"))
+			}
+			return
 		}
-		return
 	}
 
 	m.WriteReg(rd(insn), rdval)

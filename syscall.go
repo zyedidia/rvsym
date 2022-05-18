@@ -69,13 +69,13 @@ func (m *Machine) SysExit(s *smt.Solver) {
 }
 
 func (m *Machine) SysWrite(s *smt.Solver) {
-	if fd, ok := m.RegConc(10); !ok {
+	if fd, ok := m.RegConc(Ra0); !ok {
 		m.err(fmt.Errorf("symbolic fd"))
 		return
-	} else if buf, ok := m.RegConc(11); !ok {
+	} else if buf, ok := m.RegConc(Ra1); !ok {
 		m.err(fmt.Errorf("symbolic buf"))
 		return
-	} else if count, ok := m.RegConc(12); !ok {
+	} else if count, ok := m.RegConc(Ra2); !ok {
 		m.err(fmt.Errorf("symbolic count"))
 		return
 	} else {
@@ -91,16 +91,16 @@ func (m *Machine) SysWrite(s *smt.Solver) {
 			}
 			n, err := f.Write(b)
 			if err != nil {
-				m.WriteReg(10, smt.Int32{C: -1})
+				m.WriteReg(Ra0, smt.Int32{C: -1})
 			} else {
-				m.WriteReg(10, smt.Int32{C: int32(n)})
+				m.WriteReg(Ra0, smt.Int32{C: int32(n)})
 			}
 		}
 	}
 }
 
 func (m *Machine) SysClose(s *smt.Solver) {
-	if fd, ok := m.RegConc(10); !ok {
+	if fd, ok := m.RegConc(Ra0); !ok {
 		m.err(fmt.Errorf("symbolic fd"))
 		return
 	} else {
@@ -112,25 +112,25 @@ func (m *Machine) SysClose(s *smt.Solver) {
 }
 
 func (m *Machine) SysFstat(s *smt.Solver) {
-	if buf, ok := m.RegConc(11); !ok {
+	if buf, ok := m.RegConc(Ra1); !ok {
 		m.err(fmt.Errorf("symbolic fd"))
 		return
 	} else {
 		for i := int32(0); i < 112; i += 4 {
 			m.mem.WriteWord(smt.Int32{C: buf + i}, smt.Int32{C: 0}, s)
 		}
-		m.WriteReg(10, smt.Int32{C: 0})
+		m.WriteReg(Ra0, smt.Int32{C: 0})
 	}
 }
 
 func (m *Machine) SysLseek(s *smt.Solver) {
-	if fd, ok := m.RegConc(10); !ok {
+	if fd, ok := m.RegConc(Ra0); !ok {
 		m.err(fmt.Errorf("symbolic fd"))
 		return
-	} else if offset, ok := m.RegConc(11); !ok {
+	} else if offset, ok := m.RegConc(Ra1); !ok {
 		m.err(fmt.Errorf("symbolic offset"))
 		return
-	} else if whence, ok := m.RegConc(12); !ok {
+	} else if whence, ok := m.RegConc(Ra2); !ok {
 		m.err(fmt.Errorf("symbolic whence"))
 		return
 	} else {
@@ -140,22 +140,22 @@ func (m *Machine) SysLseek(s *smt.Solver) {
 		} else {
 			ret, err := f.Seek(int64(offset), int(whence))
 			if err != nil {
-				m.WriteReg(10, smt.Int32{C: -1})
+				m.WriteReg(Ra0, smt.Int32{C: -1})
 			} else {
-				m.WriteReg(10, smt.Int32{C: int32(ret)})
+				m.WriteReg(Ra0, smt.Int32{C: int32(ret)})
 			}
 		}
 	}
 }
 
 func (m *Machine) SysOpen(s *smt.Solver) {
-	if pathname, ok := m.RegConc(10); !ok {
+	if pathname, ok := m.RegConc(Ra0); !ok {
 		m.err(fmt.Errorf("symbolic path name"))
 		return
-	} else if flags, ok := m.RegConc(11); !ok {
+	} else if flags, ok := m.RegConc(Ra1); !ok {
 		m.err(fmt.Errorf("symbolic flags"))
 		return
-	} else if mode, ok := m.RegConc(12); !ok {
+	} else if mode, ok := m.RegConc(Ra2); !ok {
 		m.err(fmt.Errorf("symbolic mode"))
 		return
 	} else {
@@ -166,23 +166,23 @@ func (m *Machine) SysOpen(s *smt.Solver) {
 		}
 		file, err := os.OpenFile(string(path), int(flags), fs.FileMode(mode))
 		if err != nil {
-			m.WriteReg(10, smt.Int32{C: -1})
+			m.WriteReg(Ra0, smt.Int32{C: -1})
 			return
 		}
 
 		m.sys.fdtbl.files[int(file.Fd())] = file
-		m.WriteReg(10, smt.Int32{C: int32(file.Fd())})
+		m.WriteReg(Ra0, smt.Int32{C: int32(file.Fd())})
 	}
 }
 
 func (m *Machine) SysRead(s *smt.Solver) {
-	if fd, ok := m.RegConc(10); !ok {
+	if fd, ok := m.RegConc(Ra0); !ok {
 		m.err(fmt.Errorf("symbolic fd"))
 		return
-	} else if buf, ok := m.RegConc(11); !ok {
+	} else if buf, ok := m.RegConc(Ra1); !ok {
 		m.err(fmt.Errorf("symbolic buf"))
 		return
-	} else if count, ok := m.RegConc(12); !ok {
+	} else if count, ok := m.RegConc(Ra2); !ok {
 		m.err(fmt.Errorf("symbolic count"))
 		return
 	} else {
@@ -193,7 +193,7 @@ func (m *Machine) SysRead(s *smt.Solver) {
 			b := make([]byte, count)
 			n, err := f.Read(b)
 			if err != nil {
-				m.WriteReg(10, smt.Int32{C: -1})
+				m.WriteReg(Ra0, smt.Int32{C: -1})
 				return
 			}
 			ok := m.mem.WriteBytes(uint32(buf), b[:n], s)
@@ -201,19 +201,19 @@ func (m *Machine) SysRead(s *smt.Solver) {
 				m.err(fmt.Errorf("invalid memory access during read syscall"))
 				return
 			}
-			m.WriteReg(10, smt.Int32{C: int32(n)})
+			m.WriteReg(Ra0, smt.Int32{C: int32(n)})
 		}
 	}
 }
 
 func (m *Machine) SysBrk(s *smt.Solver) {
-	if addr, ok := m.RegConc(10); !ok {
+	if addr, ok := m.RegConc(Ra0); !ok {
 		m.err(fmt.Errorf("symbolic addr"))
 		return
 	} else {
 		if addr != 0 {
 			m.sys.brk = uint32(addr)
 		}
-		m.WriteReg(10, smt.Int32{C: int32(m.sys.brk)})
+		m.WriteReg(Ra0, smt.Int32{C: int32(m.sys.brk)})
 	}
 }

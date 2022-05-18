@@ -45,12 +45,25 @@ func NewEngine(segs []Segment, entry uint32, mode EmuMode) *Engine {
 		}
 	}
 
-	if mode == EmuLinux {
+	switch mode {
+	case EmuLinux:
 		// linux mode: use an initial stack pointer and point it at argc (0).
 		sp := int32(0x7ffff00)
-		machine.regs[2] = smt.Int32{C: sp}
+		machine.regs[Rsp] = smt.Int32{C: sp}
 		mem.WriteWord(smt.Int32{C: sp}, smt.Int32{C: 0}, s)
+	case EmuUnderConstrained:
+		for i := range machine.regs {
+			if i == Rzero || i == Rsp {
+				continue
+			}
+			sym := s.AnyInt32()
+			// machine.markSym(sym, RegNames[i])
+			machine.regs[i] = sym
+		}
+		sp := int32(0x7ffff00)
+		machine.regs[Rsp] = smt.Int32{C: sp}
 	}
+	machine.mode = mode
 
 	return &Engine{
 		active: machine,

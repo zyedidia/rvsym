@@ -79,14 +79,20 @@ func main() {
 		mode = rvsym.EmuLinux
 	}
 
-	segs, entry, err := loader.Load(bin)
-	must("load", err)
-
-	eng := rvsym.NewEngine(segs, entry, mode)
-
 	converter := &addr2line.Converter{
 		Elf: opts.Elf,
 	}
+
+	segs, entry, err := loader.Load(bin)
+	must("load", err)
+
+	if opts.Func != "" {
+		entry, err = converter.FuncToAddr(opts.Func)
+		must("elf lookup", err)
+		mode = rvsym.EmuUnderConstrained
+	}
+
+	eng := rvsym.NewEngine(segs, entry, mode)
 
 	showtc := func(eng *rvsym.Engine, last int) int {
 		if eng.NumTestCases() != last {

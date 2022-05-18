@@ -16,7 +16,7 @@ var symcalls = map[int]EcallFn{
 }
 
 func (m *Machine) SymPrint(s *smt.Solver) {
-	arg := m.regs[11]
+	arg := m.regs[Ra1]
 	if !arg.Concrete() {
 		fmt.Println(arg.S)
 	} else {
@@ -39,11 +39,11 @@ func (m *Machine) SymQuietExit(s *smt.Solver) {
 func (m *Machine) SymMarkArray(s *smt.Solver) {
 	var ptr, nbytes int32
 	var ok bool
-	if ptr, ok = m.RegConc(11); !ok {
+	if ptr, ok = m.RegConc(Ra1); !ok {
 		m.err(fmt.Errorf("array address is symbolic"))
 		return
 	}
-	if nbytes, ok = m.RegConc(12); !ok {
+	if nbytes, ok = m.RegConc(Ra2); !ok {
 		m.err(fmt.Errorf("array size is symbolic"))
 		return
 	}
@@ -57,13 +57,13 @@ func (m *Machine) SymMarkBytes(s *smt.Solver) {
 	var ptr, nbytes, nameptr int32
 	var ok bool
 
-	if ptr, ok = m.RegConc(11); !ok {
+	if ptr, ok = m.RegConc(Ra1); !ok {
 		m.err(fmt.Errorf("address is symbolic"))
 	}
-	if nbytes, ok = m.RegConc(12); !ok {
+	if nbytes, ok = m.RegConc(Ra2); !ok {
 		m.err(fmt.Errorf("nbytes is symbolic"))
 	}
-	if nameptr, ok = m.RegConc(13); !ok {
+	if nameptr, ok = m.RegConc(Ra3); !ok {
 		m.err(fmt.Errorf("name is symbolic"))
 	}
 

@@ -34,6 +34,7 @@ type EmuMode byte
 const (
 	EmuLinux EmuMode = iota
 	EmuBareMetal
+	EmuUnderConstrained
 )
 
 // control code definitions
