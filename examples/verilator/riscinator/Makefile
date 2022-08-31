@@ -6,8 +6,8 @@ endif
 CXX=wasic++
 CXXFLAGS=-fno-exceptions
 
-TOP=counter
-SRC=counter.sv
+TOP=Core
+SRC=Core.sv
 
 VERILATOR_DIR=.verilator
 
@@ -27,7 +27,7 @@ $(VERILATOR_DIR)/V$(TOP)__ALL.a: $(VERILATOR_DIR)
 sim.o: $(VERILATOR_DIR) sim.cc
 	$(MAKE) -C $(VERILATOR_DIR) -f V$(TOP).mk CXX=$(CXX) CXXFLAGS='$(CXXFLAGS) -I$(RVSYM_ROOT)/include' ../sim.o
 
-sim.wasm: sim.o $(VERILATOR_DIR)/verilated.o
+sim.wasm: sim.o $(VERILATOR_DIR)/verilated.o $(VERILATOR_DIR)/V$(TOP)__ALL.a
 	$(CXX) $(CXXFLAGS) sim.o $(VERILATOR_DIR)/*.o -o $@
 
 sim.x86: $(SRC) sim.cc
