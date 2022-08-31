@@ -11,6 +11,8 @@ SRC=counter.sv
 
 VERILATOR_DIR=.verilator
 
+VERILATOR=verilator
+
 all: sim.elf
 
 .PHONY: all
