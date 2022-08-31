@@ -1,0 +1,3 @@
+[submodule "examples/verilator/riscinator/riscinator"]
+	path = examples/verilator/riscinator/riscinator
+	url = https://github.com/zyedidia/riscinator
