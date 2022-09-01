@@ -103,6 +103,14 @@ func (m *Machine) RegConc(reg uint32) (int32, bool) {
 	return 0, false
 }
 
+func (m *Machine) RegConcretize(reg uint32, s *smt.Solver) (int32, bool) {
+	r := m.regs[reg]
+	if r.Concrete() {
+		return r.C, true
+	}
+	return concretize(r, s)
+}
+
 var isa *rvda.ISA
 
 func init() {
@@ -302,7 +310,7 @@ func (m *Machine) jal(insn uint32, isz int32) {
 
 func (m *Machine) jalr(insn uint32, isz int32, s *smt.Solver) {
 	imm := extractImm(insn, ImmTypeI)
-	pc, ok := m.RegConc(rs1(insn))
+	pc, ok := m.RegConcretize(rs1(insn), s)
 	if !ok {
 		if rs1(insn) == Rra {
 			m.exit(ExitQuiet)

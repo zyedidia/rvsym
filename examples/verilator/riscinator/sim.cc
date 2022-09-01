@@ -1,9 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "VCore.h"
-#include "VCore_Core.h"
-#include "VCore_RegFile.h"
-#include "VCore_regs_combMem.h"
 #include "VCore___024root.h"
 #include "verilated.h"
 
@@ -40,7 +37,7 @@ static void simulate(VCore* core, uint32_t* mem, size_t len, size_t mem_base) {
     uint32_t next_dmem_rdata = 0;
     uint8_t next_dmem_rvalid = 0;
 
-    unsigned ncyc = 50;
+    unsigned ncyc = 4;
     for (unsigned i = 0; i < ncyc; i++) {
         core->eval();
 
@@ -54,17 +51,17 @@ static void simulate(VCore* core, uint32_t* mem, size_t len, size_t mem_base) {
         core->io_dmem_gnt = core->io_dmem_req;
 
         if (core->io_imem_req) {
-            assert(core->io_imem_addr >= mem_base && core->io_imem_addr < mem_base + len);
+            rvsym_assert(core->io_imem_addr >= mem_base && core->io_imem_addr < mem_base + len);
             next_imem_rdata = mem[addr2idx(core->io_imem_addr, mem_base)];
         }
 
         if (core->io_dmem_req && core->io_dmem_we) {
             uint32_t write = core->io_dmem_wdata;
             uint32_t mask = be2mask(core->io_dmem_be);
-            assert(core->io_dmem_addr >= mem_base && core->io_dmem_addr < mem_base + len);
+            rvsym_assert(core->io_dmem_addr >= mem_base && core->io_dmem_addr < mem_base + len);
             mem[addr2idx(core->io_dmem_addr, mem_base)] = write & mask;
         } else if (core->io_dmem_req) {
-            assert(core->io_dmem_addr >= mem_base && core->io_dmem_addr < mem_base + len);
+            rvsym_assert(core->io_dmem_addr >= mem_base && core->io_dmem_addr < mem_base + len);
             next_dmem_rdata = mem[addr2idx(core->io_dmem_addr, mem_base)];
         }
 
@@ -76,10 +73,10 @@ static void simulate(VCore* core, uint32_t* mem, size_t len, size_t mem_base) {
 int main(int argc, char **argv) {
     VCore* dut = new VCore;
 
-    uint32_t insn = 0x02a00093;
+    uint32_t insn;
     rvsym_mark_bytes(&insn, sizeof(insn), "insn");
-    rvsym_assume(insn == 0x02a00093);
-    // rvsym_assume((insn & 0b1111111) == 0b0010011);
+    // rvsym_assume(insn == 0x02a00093);
+    rvsym_assume((insn & 0b1111111) == 0b0010011);
     // rvsym_assume(((insn >> 7) & 0x1f) == 1);
     // rvsym_assume(insn == 0x93);
 
@@ -89,13 +86,17 @@ int main(int argc, char **argv) {
     mem[1] = 0x0000006f;
     mem[2] = 0;
 
-    rvsym_mark_array(&dut->__PVT__Core->__PVT__rf->__PVT__regs_ext->Memory, sizeof(dut->__PVT__Core->__PVT__rf->__PVT__regs_ext->Memory));
+    rvsym_mark_array(&dut->rootp->Core__DOT__rf__DOT__regs_ext__DOT__Memory, sizeof(dut->rootp->Core__DOT__rf__DOT__regs_ext__DOT__Memory));
 
     simulate(dut, mem, sizeof(mem), 0x100000);
 
-    if (dut->__PVT__Core->__PVT__rf->__PVT__regs_ext->Memory[1] == 42) {
+    // printf("%x\n", dut->Soc->core->dpath->rf->regs[1]);
+    if (dut->rootp->Core__DOT__rf__DOT__regs_ext__DOT__Memory[1] == 42) {
         rvsym_exit();
     }
+
+    // printf("%x\n", dut->Soc->core->dpath->rf->regs[1]);
+    // printf("%x\n", dut->Soc->bus_io_dev_0_ram->mem[25]);
 
     return 0;
 }

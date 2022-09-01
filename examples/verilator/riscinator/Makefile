@@ -4,7 +4,7 @@ PREFIX=riscv64-unknown-elf
 endif
 
 CXX=$(PREFIX)-g++
-CXXFLAGS=-g -march=rv32im -mabi=ilp32 -I$(RVSYM_ROOT)/include
+CXXFLAGS=-g -march=rv32im -mabi=ilp32 -I$(RVSYM_ROOT)/include -O3
 
 TOP=Core
 
@@ -21,7 +21,7 @@ Core.sv:
 	mv riscinator/generated/Core.sv .
 
 $(VERILATOR_DIR): Core.sv
-	$(VERILATOR) -fno-table --public -O0 -cc -sv --Mdir $(VERILATOR_DIR) $^
+	$(VERILATOR) -fno-table --public -cc -sv --Mdir $(VERILATOR_DIR) $^
 
 $(VERILATOR_DIR)/verilated.o: $(VERILATOR_DIR)
 	$(MAKE) -C $(VERILATOR_DIR) -f V$(TOP).mk CXX=$(CXX) CXXFLAGS='$(CXXFLAGS)' verilated.o
