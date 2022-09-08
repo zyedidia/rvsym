@@ -225,6 +225,8 @@ func (m *Machine) Exec(s *smt.Solver) (isz int32) {
 		m.store(insn, s)
 	case OpAtomic:
 		m.atomic(insn, s)
+	default:
+		panic(fmt.Sprintf("unknown instruction: %v", isa.Disassemble(uint(m.pc), uint(insn))))
 	}
 
 	return isz
@@ -322,7 +324,7 @@ func (m *Machine) jalr(insn uint32, isz int32, s *smt.Solver) {
 	}
 
 	m.WriteReg(rd(insn), smt.Int32{C: m.pc + isz})
-	m.br(pc+imm, smt.Bool{C: true})
+	m.br(((pc+imm)>>1)<<1, smt.Bool{C: true})
 }
 
 func (m *Machine) load(insn uint32, s *smt.Solver) {
