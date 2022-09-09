@@ -40,11 +40,12 @@ func (m *Machine) alu(a, b smt.Int32, op AluOp, s *smt.Solver) smt.Int32 {
 	case AluXor:
 		return a.Xor(b, s)
 	case AluSll:
-		return a.Sll(b, s)
+		// shifts only use bottom 5 bits
+		return a.Sll(b.And(smt.Int32{C: 0b11111}, s), s)
 	case AluSrl:
-		return a.Srl(b, s)
+		return a.Srl(b.And(smt.Int32{C: 0b11111}, s), s)
 	case AluSra:
-		return a.Sra(b, s)
+		return a.Sra(b.And(smt.Int32{C: 0b11111}, s), s)
 	case AluOr:
 		return a.Or(b, s)
 	case AluAnd:
