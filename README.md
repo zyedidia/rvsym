@@ -24,8 +24,7 @@ go build -tags z3,noboolector ./cmd/rvsym
 ```
 
 In order to build the examples you will also need the RISC-V GNU toolchain.
-Pre-built toolchains are available from SiFive
-[here](https://www.sifive.com/software). After downloading, unpack the tar
+Pre-built toolchains are available from [my repo](https://github.com/zyedidia/riscv-gnu-toolchain-prebuilt/releases/tag/v1). After downloading, unpack the tar
 archive to `/opt/riscv` (or if you choose another location, point the `RISCV`
 environment variable to your installation).
 
