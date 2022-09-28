@@ -4,7 +4,7 @@ git clone https://github.com/zyedidia/boolector
 cd boolector
 ./contrib/setup-lingeling.sh
 ./contrib/setup-btor2tools.sh
-./configure.sh && cd build && make
+./configure.sh --only-lingeling && cd build && make
 
 cd ..
 
